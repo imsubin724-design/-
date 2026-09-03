@@ -1,0 +1,12 @@
+.venv/
+.venv_old_broken/
+_archive_old/
+webmail_profile/
+daily_report.html
+__pycache__/
+logs/
+*.log
+lens_smtp_password.txt
+.streamlit/secrets.toml
+debug_*.png
+shopee_thailand_profile/
