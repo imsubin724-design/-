@@ -6,6 +6,7 @@ import argparse
 import csv
 import html
 import os
+import re
 import shutil
 import smtplib
 import subprocess
@@ -24,6 +25,7 @@ SOURCES = (
         "today": "today.csv",
         "yesterday": "yesterday.csv",
         "archive": "ranking_*.csv",
+        "archive_regex": r"ranking_\d{4}-\d{2}-\d{2}\.csv",
         "script": "app.py",
         "host": "https://morecon.jp",
         "tags": "manual_tags.csv",
@@ -33,6 +35,7 @@ SOURCES = (
         "today": "queen_eyes_today.csv",
         "yesterday": "queen_eyes_yesterday.csv",
         "archive": "ranking_queen_eyes_*.csv",
+        "archive_regex": r"ranking_queen_eyes_\d{4}-\d{2}-\d{2}\.csv",
         "script": "app_queen_eyes.py",
         "host": "https://www.queen-eyes.com",
         "tags": "queen_eyes_manual_tags.csv",
@@ -114,9 +117,9 @@ def restore_yesterday(source: dict[str, str]) -> None:
     today = datetime.now().strftime("%Y-%m-%d")
     candidates = []
     for path in ROOT.glob(source["archive"]):
-        if today not in path.stem:
+        if re.fullmatch(source["archive_regex"], path.name) and today not in path.stem:
             candidates.append(path)
-    candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+    candidates.sort(key=lambda item: item.name, reverse=True)
     if candidates:
         shutil.copy2(candidates[0], ROOT / source["yesterday"])
     elif (ROOT / source["today"]).exists():
