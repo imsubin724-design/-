@@ -2,8 +2,8 @@ name: Daily lens ranking update
 
 on:
   schedule:
-    # 01:00 UTC = 10:00 Asia/Seoul
-    - cron: "0 1 * * *"
+    # 01:07 UTC = 10:07 Asia/Seoul (정각 실행 혼잡 회피)
+    - cron: "7 1 * * *"
   workflow_dispatch:
 
 permissions:
