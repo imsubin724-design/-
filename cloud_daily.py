@@ -40,6 +40,16 @@ SOURCES = (
         "host": "https://www.queen-eyes.com",
         "tags": "queen_eyes_manual_tags.csv",
     },
+    {
+        "name": "Hotel Lovers",
+        "today": "hotel_lovers_today.csv",
+        "yesterday": "hotel_lovers_yesterday.csv",
+        "archive": "ranking_hotel_lovers_*.csv",
+        "archive_regex": r"ranking_hotel_lovers_\d{4}-\d{2}-\d{2}\.csv",
+        "script": "app_hotel_lovers.py",
+        "host": "https://hotellovers.jp",
+        "tags": "hotel_lovers_manual_tags.csv",
+    },
 )
 def read_rows(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8-sig", newline="") as file:
@@ -229,7 +239,7 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
         '<!doctype html><html><body style="margin:0;background:#fff7fa;font-family:Arial,sans-serif;color:#263044">'
         '<div style="max-width:1100px;margin:auto;padding:28px;background:#ffffff">'
         f'<h1 style="color:#d8688c">일본 컬러렌즈 일일 트렌드 리포트 · {today}</h1>'
-        '<p>Morecon과 Queen Eyes의 당일 1day 컬러렌즈 인기 순위입니다.</p>'
+        '<p>Morecon, Queen Eyes, Hotel Lovers의 당일 1day 컬러렌즈 인기 순위입니다.</p>'
         f'{"".join(sections)}</div></body></html>'
     )
     return document, image_parts

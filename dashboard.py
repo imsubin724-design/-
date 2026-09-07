@@ -100,6 +100,21 @@ COUNTRIES = {
         "host": "https://www.queen-eyes.com",
         "show_specs": True,
     },
+    "hotel_lovers": {
+        "key": "hotel_lovers",
+        "label": "일본",
+        "title": "일본 Hotel Lovers",
+        "source": "Hotel Lovers",
+        "subtitle": "Hotel Lovers 주간 1day 컬러렌즈 인기 TOP 6 랭킹 기반 트렌드 분석",
+        "search_url": "https://hotellovers.jp/initranking",
+        "script": "app_hotel_lovers.py",
+        "today_file": "hotel_lovers_today.csv",
+        "yesterday_file": "hotel_lovers_yesterday.csv",
+        "tag_file": "hotel_lovers_manual_tags.csv",
+        "archive_prefix": "ranking_hotel_lovers",
+        "host": "https://hotellovers.jp",
+        "show_specs": True,
+    },
 }
 
 
@@ -1382,7 +1397,7 @@ def render_country_home():
     sources = [
         ("01", "Morecon", "https://morecon.jp/", "기존 분석 연결", "모어콘 원데이 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=japan", "대시보드 열기", True),
         ("02", "Queen Eyes", "https://www.queen-eyes.com/", "분석 연결", "Queen Eyes 1day 인기 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=queen_eyes", "대시보드 열기", True),
-        ("03", "Hotel Lovers", "https://hotellovers.jp/", "수집 준비", "일본 컬러렌즈 상품 랭킹과 신상품 흐름을 수집할 예정입니다.", "https://hotellovers.jp/", "사이트 열기", False),
+        ("03", "Hotel Lovers", "https://hotellovers.jp/", "분석 연결", "Hotel Lovers 주간 1day 인기 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=hotel_lovers", "대시보드 열기", True),
         ("04", "Rakuten Daily", "https://ranking.rakuten.co.jp/daily/408099/", "수집 준비", "라쿠텐 데일리 랭킹을 추가해 대형몰 기준의 변화를 비교할 예정입니다.", "https://ranking.rakuten.co.jp/daily/408099/", "사이트 열기", False),
     ]
     cards = []
@@ -1911,7 +1926,7 @@ def render_card(row, config, manual_tags, status_map):
 def render_country_dashboard(country_key):
     config = COUNTRIES[country_key]
 
-    if country_key == "queen_eyes":
+    if country_key in {"queen_eyes", "hotel_lovers"}:
         st.markdown(
             """
             <style>
