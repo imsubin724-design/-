@@ -166,6 +166,11 @@ st.markdown(
     border-color:rgba(255,255,255,0.54);
     box-shadow:0 14px 32px rgba(191,103,132,0.13);
 }
+.page-head-hotel_lovers {
+    background:linear-gradient(135deg, #e8c54f 0%, #f3dc83 100%);
+    border-color:rgba(255,255,255,0.58);
+    box-shadow:0 14px 32px rgba(171,136,34,0.15);
+}
 .home-head-copy { min-width:0; }
 .home-guide {
     display:flex;
