@@ -1877,7 +1877,26 @@ def render_card(row, config, manual_tags, status_map):
             if image:
                 st.image(image, use_container_width=True)
             if eye_image:
-                st.image(eye_image, caption="착용 눈 이미지", use_container_width=True)
+                # Some brands only publish comparison sheets. Show the lens-worn
+                # eye, never the bare eye or the producer's reference eye.
+                crop = None
+                if config["source"] == "Hotel Lovers":
+                    if "191efffe1afe85ef4f8f446bb1a071fc" in eye_image:
+                        crop = (1280, 75, 810, 500, 300)
+                    elif "2b6f231efc5628aa4e230baf4cb4a9d9" in eye_image:
+                        crop = (1000, 550, 290, 350, 240)
+                if crop:
+                    size, x, y, width, height = crop
+                    st.markdown(
+                        f'<div style="position:relative;overflow:hidden;width:100%;aspect-ratio:{width}/{height};border-radius:10px;">'
+                        f'<img src="{html.escape(eye_image, quote=True)}" alt="렌즈 착용 눈 이미지" '
+                        f'style="position:absolute;width:{size / width * 100}%;max-width:none;'
+                        f'left:{-x / width * 100}%;top:{-y / height * 100}%;"></div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.caption("착용 눈 이미지")
+                else:
+                    st.image(eye_image, caption="착용 눈 이미지", use_container_width=True)
 
         with info_col:
             if config["show_specs"]:
