@@ -1897,7 +1897,8 @@ def render_card(row, config, manual_tags, status_map):
                         f'left:{-x / width * 100}%;top:{-y / height * 100}%;"></div>'
                     )
                 else:
-                    eye_html = f'<img src="{html.escape(eye_image, quote=True)}" alt="착용 눈 이미지" style="display:block;width:100%;height:auto;max-height:100%;object-fit:contain;border-radius:10px;">'
+                    eye_fit = "height:100%;object-fit:cover;object-position:center;" if config["source"] == "Morecon" else "height:auto;max-height:100%;object-fit:contain;"
+                    eye_html = f'<img src="{html.escape(eye_image, quote=True)}" alt="착용 눈 이미지" style="display:block;width:100%;{eye_fit}border-radius:10px;">'
             # Identical image slots across all malls; wide eyes stay centered
             # rather than pulling the product name and controls upward.
             st.markdown(
