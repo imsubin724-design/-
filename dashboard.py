@@ -1889,7 +1889,14 @@ def render_card(row, config, manual_tags, status_map):
                         crop = (1280, 75, 810, 500, 300)
                     elif "2b6f231efc5628aa4e230baf4cb4a9d9" in eye_image:
                         crop = (1000, 550, 290, 350, 240)
-                if crop:
+                if eye_image.endswith("#home-eye"):
+                    # Homepage original is a 350px model + 206px wearing eye.
+                    eye_html = (
+                        '<div style="position:relative;overflow:hidden;width:100%;aspect-ratio:350/206;border-radius:10px;">'
+                        f'<img src="{html.escape(eye_image, quote=True)}" alt="착용 눈 이미지" '
+                        'style="position:absolute;width:100%;max-width:none;left:0;top:-169.9029126%;"></div>'
+                    )
+                elif crop:
                     size, x, y, width, height = crop
                     eye_html = (
                         f'<div style="position:relative;overflow:hidden;width:100%;aspect-ratio:{width}/{height};border-radius:10px;">'

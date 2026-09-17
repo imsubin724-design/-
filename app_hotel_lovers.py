@@ -2,6 +2,7 @@ from datetime import datetime
 import csv
 import os
 import re
+from urllib.parse import urlsplit, parse_qs
 
 from playwright.sync_api import sync_playwright
 
@@ -27,6 +28,29 @@ def normalize_url(url):
     return url
 
 
+def product_key(url):
+    parts = urlsplit(normalize_url(url))
+    return parts.path, parse_qs(parts.query).get("color", [""])[0]
+
+
+def collect_home_eyes(context):
+    page = context.new_page()
+    try:
+        page.goto(BASE_URL, wait_until="domcontentloaded", timeout=45000)
+        page.locator(".toprank_list a img").first.wait_for(state="attached", timeout=30000)
+        cards = page.locator(".toprank_list").evaluate_all("""cards => cards.map(card => ({
+            href: card.querySelector('a')?.href,
+            image: card.querySelector('a img')?.src
+        }))""")
+        return {product_key(card["href"]): card["image"] + "#home-eye"
+                for card in cards if card.get("href") and card.get("image")}
+    except Exception as error:
+        print(f"홈페이지 착용 이미지 수집 경고: {error}")
+        return {}
+    finally:
+        page.close()
+
+
 def get_eye_image_url(context, product_url):
     detail_page = context.new_page()
     try:
@@ -46,6 +70,7 @@ def get_eye_image_url(context, product_url):
 
 
 def collect_oneday_ranking(page, context, top_n=6):
+    home_eyes = collect_home_eyes(context)
     page.goto(RANKING_URL, wait_until="domcontentloaded", timeout=45000)
     page.locator(RANKING_SELECTOR).first.wait_for(state="attached", timeout=30000)
     rows = []
@@ -64,7 +89,8 @@ def collect_oneday_ranking(page, context, top_n=6):
         rank = int(match.group(1)) if match else fallback_rank
         product = f"{name} {color}".strip()
         if href and product:
-            rows.append([rank, product, href, image_url, get_eye_image_url(context, href)])
+            eye_url = home_eyes.get(product_key(href)) or get_eye_image_url(context, href)
+            rows.append([rank, product, href, image_url, eye_url])
     rows.sort(key=lambda row: row[0])
     if len(rows) < top_n:
         page.screenshot(path="debug_hotel_lovers_ranking.png", full_page=True)
