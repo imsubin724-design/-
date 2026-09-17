@@ -53,7 +53,8 @@ def collect_oneday_ranking(page, context, top_n=6):
         rank_text = card.locator(".p-goods-rank").first.inner_text().strip()
         name = card.locator(".contact__product-name").first.inner_text().strip()
         color = card.locator(".contact__color").first.inner_text().strip()
-        image = card.locator("img").first
+        # Stock-status ribbons are images too; only select the product photo.
+        image = card.locator("img.w-100:not(.c-badge-band-image)").first
         href = normalize_url(link.get_attribute("href"))
         image_url = normalize_url(image.get_attribute("src"))
         match = re.search(r"(\d+)", rank_text)
