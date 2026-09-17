@@ -33,7 +33,10 @@ def get_eye_image_url(context, product_url):
         detail_page.goto(product_url, wait_until="domcontentloaded", timeout=45000)
         current = detail_page.locator("#js-thumb-pc-main .slick-current").first
         current.wait_for(state="attached", timeout=30000)
-        eye_image = current.locator("xpath=following-sibling::*[1]//img").first
+        # Dewlit's color gallery: hero, comparison, material guide, lens, single eye.
+        # Keep the offset relative to the selected color, not the whole gallery.
+        offset = 4 if "9f4b9b5a-30b0-481d-b7d5-45ea23723b65" in product_url else 1
+        eye_image = current.locator(f"xpath=following-sibling::*[{offset}]//img[not(contains(@class, 'c-badge-band-image'))]").first
         return normalize_url(eye_image.get_attribute("src")) if eye_image.count() else ""
     except Exception as error:
         print(f"착용 이미지 수집 경고: {product_url} ({error})")
