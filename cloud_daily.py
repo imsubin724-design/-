@@ -54,7 +54,7 @@ SOURCES = (
 HISTORY_FIELDS = ["date", "country", "source", "rank", "product", "href", "color", "color_other", "mood", "mood_other", "edge", "edge_other"]
 
 
-def sync_trend_history() -> int:
+def sync_trend_history(backfill_saved_tags: bool = False) -> int:
     """Recover archived rankings without inventing historical design tags."""
     history_path = ROOT / "trend_history.csv"
     existing = read_rows(history_path) if history_path.exists() else []
@@ -82,6 +82,21 @@ def sync_trend_history() -> int:
                         record[field + "_other"] = tag.get(field + "_other", "")
                 records[key] = record
                 added += 1
+    filled = 0
+    if backfill_saved_tags:
+        for source in SOURCES:
+            tags_path = ROOT / source["tags"]
+            tags = {full_url(r.get("href", ""), source["host"]): r for r in read_rows(tags_path)} if tags_path.exists() else {}
+            for record in records.values():
+                if record["source"] != source["name"]:
+                    continue
+                tag = tags.get(full_url(record.get("href", ""), source["host"]), {})
+                for field in ("color", "mood", "edge"):
+                    if record.get(field, "").strip() in ("", "미입력", "입력값 없음") and tag.get(field, "").strip():
+                        record[field] = display_tag(tag, field)
+                        record[field + "_other"] = tag.get(field + "_other", "")
+                        filled += 1
+        print(f"기존 저장 태그 복구: {filled}개 항목 (현재 저장값 기준)")
     with history_path.open("w", encoding="utf-8-sig", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=HISTORY_FIELDS, extrasaction="ignore", lineterminator="\n")
         writer.writeheader()
@@ -323,9 +338,10 @@ def main() -> None:
     parser.add_argument("--skip-collection", action="store_true")
     parser.add_argument("--send-email", action="store_true")
     parser.add_argument("--recover-history-only", action="store_true")
+    parser.add_argument("--backfill-saved-tags", action="store_true")
     args = parser.parse_args()
     if args.recover_history_only:
-        sync_trend_history()
+        sync_trend_history(backfill_saved_tags=args.backfill_saved_tags)
         return
     if not args.skip_collection:
         collect()
