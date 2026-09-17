@@ -51,6 +51,45 @@ SOURCES = (
         "tags": "hotel_lovers_manual_tags.csv",
     },
 )
+HISTORY_FIELDS = ["date", "country", "source", "rank", "product", "href", "color", "color_other", "mood", "mood_other", "edge", "edge_other"]
+
+
+def sync_trend_history() -> int:
+    """Recover archived rankings without inventing historical design tags."""
+    history_path = ROOT / "trend_history.csv"
+    existing = read_rows(history_path) if history_path.exists() else []
+    records = {(r["date"], r["source"], r["href"]): dict(r) for r in existing}
+    today = datetime.now().strftime("%Y-%m-%d")
+    added = 0
+    for source in SOURCES:
+        tags_path = ROOT / source["tags"]
+        tags = {full_url(r.get("href", ""), source["host"]): r for r in read_rows(tags_path)} if tags_path.exists() else {}
+        for path in sorted(ROOT.glob(source["archive"])):
+            if not re.fullmatch(source["archive_regex"], path.name):
+                continue
+            date = re.search(r"\d{4}-\d{2}-\d{2}", path.stem).group(0)
+            for row in read_rows(path):
+                href = full_url(row.get("href", ""), source["host"])
+                key = (date, source["name"], href)
+                if key in records:
+                    continue
+                record = dict.fromkeys(HISTORY_FIELDS, "")
+                record.update(date=date, country="일본", source=source["name"], rank=row["rank"], product=row.get("product", ""), href=href)
+                if date == today:
+                    tag = tags.get(href, {})
+                    for field in ("color", "mood", "edge"):
+                        record[field] = display_tag(tag, field) if tag.get(field) else ""
+                        record[field + "_other"] = tag.get(field + "_other", "")
+                records[key] = record
+                added += 1
+    with history_path.open("w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=HISTORY_FIELDS, extrasaction="ignore", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(sorted(records.values(), key=lambda r: (r["date"], r["source"], int(r["rank"]))))
+    print(f"누적 기록 복구: {added}건 추가, 총 {len(records)}건")
+    return added
+
+
 def read_rows(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8-sig", newline="") as file:
         return list(csv.DictReader(file))
@@ -283,9 +322,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-collection", action="store_true")
     parser.add_argument("--send-email", action="store_true")
+    parser.add_argument("--recover-history-only", action="store_true")
     args = parser.parse_args()
+    if args.recover_history_only:
+        sync_trend_history()
+        return
     if not args.skip_collection:
         collect()
+    sync_trend_history()
     write_report()
     if args.send_email:
         send_email()
