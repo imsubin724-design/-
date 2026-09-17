@@ -1874,8 +1874,11 @@ def render_card(row, config, manual_tags, status_map):
         img_col, info_col = st.columns([1.05, 0.95], gap="small")
 
         with img_col:
-            if image:
-                st.image(image, use_container_width=True)
+            main_html = (
+                f'<img src="{html.escape(image, quote=True)}" alt="제품 이미지" style="width:100%;height:100%;object-fit:contain;border-radius:10px;">'
+                if image else ""
+            )
+            eye_html = ""
             if eye_image:
                 # Some brands only publish comparison sheets. Show the lens-worn
                 # eye, never the bare eye or the producer's reference eye.
@@ -1887,16 +1890,24 @@ def render_card(row, config, manual_tags, status_map):
                         crop = (1000, 550, 290, 350, 240)
                 if crop:
                     size, x, y, width, height = crop
-                    st.markdown(
+                    eye_html = (
                         f'<div style="position:relative;overflow:hidden;width:100%;aspect-ratio:{width}/{height};border-radius:10px;">'
                         f'<img src="{html.escape(eye_image, quote=True)}" alt="렌즈 착용 눈 이미지" '
                         f'style="position:absolute;width:{size / width * 100}%;max-width:none;'
-                        f'left:{-x / width * 100}%;top:{-y / height * 100}%;"></div>',
-                        unsafe_allow_html=True,
+                        f'left:{-x / width * 100}%;top:{-y / height * 100}%;"></div>'
                     )
-                    st.caption("착용 눈 이미지")
                 else:
-                    st.image(eye_image, caption="착용 눈 이미지", use_container_width=True)
+                    eye_html = f'<img src="{html.escape(eye_image, quote=True)}" alt="착용 눈 이미지" style="display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;">'
+            # Identical image slots across all malls; wide eyes stay centered
+            # rather than pulling the product name and controls upward.
+            st.markdown(
+                f'<div style="width:100%;aspect-ratio:1;">{main_html}</div>'
+                f'<div style="width:100%;aspect-ratio:1;margin-top:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;">'
+                f'<div style="width:100%;height:calc(100% - 32px);display:flex;align-items:center;justify-content:center;">{eye_html}</div>'
+                f'<div style="height:32px;display:flex;align-items:center;justify-content:center;color:#8b8f99;font-size:0.85rem;white-space:nowrap;">'
+                f'{"착용 눈 이미지" if eye_image else ""}</div></div>',
+                unsafe_allow_html=True,
+            )
 
         with info_col:
             if config["show_specs"]:
