@@ -1897,13 +1897,13 @@ def render_card(row, config, manual_tags, status_map):
                         f'left:{-x / width * 100}%;top:{-y / height * 100}%;"></div>'
                     )
                 else:
-                    eye_html = f'<img src="{html.escape(eye_image, quote=True)}" alt="착용 눈 이미지" style="display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;">'
+                    eye_html = f'<img src="{html.escape(eye_image, quote=True)}" alt="착용 눈 이미지" style="display:block;width:100%;height:auto;max-height:100%;object-fit:contain;border-radius:10px;">'
             # Identical image slots across all malls; wide eyes stay centered
             # rather than pulling the product name and controls upward.
             st.markdown(
                 f'<div style="width:100%;aspect-ratio:1;">{main_html}</div>'
-                f'<div style="width:100%;aspect-ratio:1;margin-top:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;">'
-                f'<div style="width:100%;height:calc(100% - 32px);display:flex;align-items:center;justify-content:center;">{eye_html}</div>'
+                f'<div style="width:100%;margin-top:16px;">'
+                f'<div style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;">{eye_html}</div>'
                 f'<div style="height:32px;display:flex;align-items:center;justify-content:center;color:#8b8f99;font-size:0.85rem;white-space:nowrap;">'
                 f'{"착용 눈 이미지" if eye_image else ""}</div></div>',
                 unsafe_allow_html=True,
