@@ -1292,8 +1292,9 @@ def generate_trend_text(top_tags, config, date_label=None):
 
     if not color_counts and not mood_counts and not edge_counts:
         return (
-            f"{today_text} 기준 {label} {source} 컬러렌즈 TOP 6 랭킹의 컬러, 무드, 엣지를 입력하면, "
-            "입력값을 기반으로 디자인 트렌드 문장이 자동으로 생성됩니다."
+            "컬러|저장된 컬러 입력값이 없습니다. 제품별 컬러를 입력하고 저장하면 컬러 구성이 표시됩니다.\n\n"
+            "디자인|저장된 무드·엣지 입력값이 없습니다. 입력 후 저장하면 디자인 특징이 표시됩니다.\n\n"
+            f"트렌드|{today_text} 기준 {label} {source} TOP 6의 입력값이 아직 없어 디자인 트렌드를 분석할 수 없습니다."
         )
 
     main_color = max(color_counts, key=color_counts.get) if color_counts else None
@@ -1962,7 +1963,7 @@ def render_card(row, config, manual_tags, status_map):
 def render_country_dashboard(country_key):
     config = COUNTRIES[country_key]
 
-    if country_key in {"queen_eyes", "hotel_lovers"}:
+    if country_key == "queen_eyes":
         st.markdown(
             """
             <style>
@@ -1984,6 +1985,26 @@ def render_country_dashboard(country_key):
             .metric-card,
             .summary-box { background:#fffafd; }
             div.stButton > button:hover { color:#b84670; }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    if country_key == "hotel_lovers":
+        st.markdown(
+            """
+            <style>
+            :root {
+                --paper:#fffcf4; --panel:#fffefa; --ink:#373329;
+                --muted:#8b826b; --peach:#f1d477; --peach-deep:#b79336;
+                --peach-soft:#fff7dc; --peach-line:#ecdfa9;
+                --shadow:0 14px 32px rgba(157,126,42,0.08);
+            }
+            .stApp, [data-testid="stAppViewContainer"] { background:#fffcf4; }
+            .trend-chip, .repeat-pill { background:#fff7dc !important; border-color:#e9d994 !important; color:#796125 !important; }
+            .metric-card, .summary-box { background:#fffefa; }
+            div.stButton > button:hover { color:#967527; }
+            [data-baseweb="select"] > div { background:#fff9e9 !important; }
             </style>
             """,
             unsafe_allow_html=True,
