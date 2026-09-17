@@ -1893,22 +1893,22 @@ def render_card(row, config, manual_tags, status_map):
 
         st.markdown(f'<div class="product-name">{html.escape(short_name(product))}</div>', unsafe_allow_html=True)
 
-        color_index = COLOR_OPTIONS.index(tag["color"]) if tag.get("color") in COLOR_OPTIONS else 0
-        selected_color = st.selectbox("렌즈 컬러", COLOR_OPTIONS, index=color_index, key=f"color_{config['label']}_{href}")
+        color_index = COLOR_OPTIONS.index(tag["color"]) if tag.get("color") in COLOR_OPTIONS else None
+        selected_color = st.selectbox("렌즈 컬러", COLOR_OPTIONS, index=color_index, placeholder="선택 안 함", key=f"color_v2_{config['label']}_{href}") or ""
 
         color_other = tag.get("color_other", "")
         if selected_color == "기타":
             color_other = st.text_input("기타 컬러 입력", value=color_other, key=f"color_other_{config['label']}_{href}")
 
-        mood_index = MOOD_OPTIONS.index(tag["mood"]) if tag.get("mood") in MOOD_OPTIONS else 0
-        selected_mood = st.selectbox("무드", MOOD_OPTIONS, index=mood_index, key=f"mood_{config['label']}_{href}")
+        mood_index = MOOD_OPTIONS.index(tag["mood"]) if tag.get("mood") in MOOD_OPTIONS else None
+        selected_mood = st.selectbox("무드", MOOD_OPTIONS, index=mood_index, placeholder="선택 안 함", key=f"mood_v2_{config['label']}_{href}") or ""
 
         mood_other = tag.get("mood_other", "")
         if selected_mood == "기타":
             mood_other = st.text_input("기타 무드 입력", value=mood_other, key=f"mood_other_{config['label']}_{href}")
 
-        edge_index = EDGE_OPTIONS.index(tag["edge"]) if tag.get("edge") in EDGE_OPTIONS else 0
-        selected_edge = st.selectbox("엣지", EDGE_OPTIONS, index=edge_index, key=f"edge_{config['label']}_{href}")
+        edge_index = EDGE_OPTIONS.index(tag["edge"]) if tag.get("edge") in EDGE_OPTIONS else None
+        selected_edge = st.selectbox("엣지", EDGE_OPTIONS, index=edge_index, placeholder="선택 안 함", key=f"edge_v2_{config['label']}_{href}") or ""
 
         edge_other = tag.get("edge_other", "")
         if selected_edge == "기타":
