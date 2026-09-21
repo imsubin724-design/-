@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import html
+import io
 import os
 import re
 import shutil
@@ -17,8 +18,23 @@ from email.message import EmailMessage
 from pathlib import Path
 from urllib.request import Request, urlopen
 
+from PIL import Image
+
 
 ROOT = Path(__file__).resolve().parent
+
+
+def prepare_email_image(url: str, data: bytes, mime: str) -> tuple[bytes, str]:
+    """Crop Hotel Lovers homepage composites down to their wearing-eye panel."""
+    if not url.endswith("#home-eye"):
+        return data, mime
+    with Image.open(io.BytesIO(data)) as image:
+        # Homepage ranking artwork is model/product above and wearing eye below.
+        split_y = round(image.height * 350 / 556)
+        eye = image.crop((0, split_y, image.width, image.height)).convert("RGB")
+        output = io.BytesIO()
+        eye.save(output, format="JPEG", quality=92, optimize=True)
+    return output.getvalue(), "image/jpeg"
 SOURCES = (
     {
         "name": "Morecon",
@@ -247,10 +263,11 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
                 src = url
                 if cid_images and url:
                     try:
-                        req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                        req = Request(url.split("#", 1)[0], headers={"User-Agent": "Mozilla/5.0"})
                         with urlopen(req, timeout=20) as response:
                             data = response.read()
                             mime = response.headers.get_content_type()
+                        data, mime = prepare_email_image(url, data, mime)
                         cid = f"{source['name'].replace(' ', '').lower()}-{row['rank']}-{kind}"
                         image_parts.append((cid, data, mime))
                         src = f"cid:{cid}"
