@@ -2,6 +2,7 @@ from datetime import datetime
 import csv
 import os
 import re
+import shutil
 from urllib.parse import urlsplit, parse_qs
 
 from playwright.sync_api import sync_playwright
@@ -99,7 +100,11 @@ def collect_oneday_ranking(page, context, top_n=6):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=os.environ.get("LENS_HEADLESS", "0") == "1")
+    launch_options = {"headless": os.environ.get("LENS_HEADLESS", "0") == "1"}
+    chromium_path = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE") or shutil.which("chromium")
+    if chromium_path:
+        launch_options["executable_path"] = chromium_path
+    browser = playwright.chromium.launch(**launch_options)
     context = browser.new_context(
         viewport={"width": 1440, "height": 2200},
         user_agent=(

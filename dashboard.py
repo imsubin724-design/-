@@ -1449,8 +1449,11 @@ def run_update(config):
     if os.path.exists(config["today_file"]):
         shutil.copy(config["today_file"], config["yesterday_file"])
 
+    environment = os.environ.copy()
+    environment["LENS_HEADLESS"] = "1"
     return subprocess.run(
         [sys.executable, config["script"]],
+        env=environment,
         capture_output=True,
         text=True,
         encoding="utf-8",
