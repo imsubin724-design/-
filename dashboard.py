@@ -119,6 +119,22 @@ COUNTRIES = {
         "host": "https://hotellovers.jp",
         "show_specs": True,
     },
+    "donki_offline": {
+        "key": "donki_offline",
+        "label": "일본",
+        "title": "일본 Don Quijote 오프라인",
+        "source": "Don Quijote Offline",
+        "subtitle": "돈키호테 오프라인 월간 1day 컬러렌즈 판매 TOP 28 분석",
+        "search_url": "https://docs.google.com/presentation/d/1xg_Axh5Qi4UpmOfT9iMEIo-33g1zW_rb/edit",
+        "script": "",
+        "today_file": "donki_2026-08.csv",
+        "yesterday_file": "donki_2026-07.csv",
+        "tag_file": "donki_offline_manual_tags.csv",
+        "archive_prefix": "donki",
+        "host": "",
+        "show_specs": True,
+        "period_type": "monthly",
+    },
 }
 
 
@@ -174,6 +190,11 @@ st.markdown(
     background:linear-gradient(135deg, #e8c54f 0%, #f3dc83 100%);
     border-color:rgba(255,255,255,0.58);
     box-shadow:0 14px 32px rgba(171,136,34,0.15);
+}
+.page-head-donki_offline {
+    background:linear-gradient(135deg, #183b72 0%, #416fa8 100%);
+    border-color:rgba(255,255,255,0.54);
+    box-shadow:0 14px 32px rgba(24,59,114,0.14);
 }
 .home-head-copy { min-width:0; }
 .home-guide {
@@ -1458,7 +1479,8 @@ def render_country_home():
         ("01", "Morecon", "https://morecon.jp/", "기존 분석 연결", "모어콘 원데이 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=japan", "대시보드 열기", True),
         ("02", "Queen Eyes", "https://www.queen-eyes.com/", "분석 연결", "Queen Eyes 1day 인기 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=queen_eyes", "대시보드 열기", True),
         ("03", "Hotel Lovers", "https://hotellovers.jp/", "분석 연결", "Hotel Lovers 주간 1day 인기 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=hotel_lovers", "대시보드 열기", True),
-        ("04", "Rakuten Daily", "https://ranking.rakuten.co.jp/daily/408099/", "수집 준비", "라쿠텐 데일리 랭킹을 추가해 대형몰 기준의 변화를 비교할 예정입니다.", "https://ranking.rakuten.co.jp/daily/408099/", "사이트 열기", False),
+        ("04", "Don Quijote Offline", "https://docs.google.com/presentation/d/1xg_Axh5Qi4UpmOfT9iMEIo-33g1zW_rb/edit", "월간 분석 연결", "돈키호테 오프라인 월간 판매 TOP 28과 전월 대비 순위 변화를 확인합니다.", "?country=donki_offline", "대시보드 열기", True),
+        ("05", "Rakuten Daily", "https://ranking.rakuten.co.jp/daily/408099/", "수집 준비", "라쿠텐 데일리 랭킹을 추가해 대형몰 기준의 변화를 비교할 예정입니다.", "https://ranking.rakuten.co.jp/daily/408099/", "사이트 열기", False),
     ]
     cards = []
     for index, name, url, status, description, href, action, active in sources:
@@ -1898,6 +1920,119 @@ def render_period_trend(config):
         render_daily_snapshot_popup(config, popup_date, popup_df)
 
 
+def render_donki_offline_dashboard(config):
+    month_files = {
+        "2026년 8월": "donki_2026-08.csv",
+        "2026년 7월": "donki_2026-07.csv",
+    }
+    month_labels = list(month_files)
+    selected_month = st.session_state.get("donki_month", month_labels[0])
+    selected_index = month_labels.index(selected_month)
+    current_file = month_files[selected_month]
+    previous_file = month_files[month_labels[selected_index + 1]] if selected_index + 1 < len(month_labels) else ""
+
+    df_current = prepare_dataframe(current_file, config)
+    df_previous = prepare_dataframe(previous_file, config) if previous_file else pd.DataFrame()
+    manual_tags = load_manual_tags(config)
+    status_map = build_status_map(df_current, df_previous)
+
+    st.markdown(
+        f"""
+        <div class="page-head page-head-donki_offline">
+            <div class="page-head-row">
+                <div class="page-head-copy">
+                    <div class="main-title">{config['title']} 컬러렌즈 트렌드 대시보드</div>
+                    <div class="main-subtitle">{config['subtitle']}</div>
+                </div>
+                <div class="header-update">
+                    <div class="header-update-label">판매 기준</div>
+                    <div class="header-update-time">{selected_month}</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    nav_col, source_col, _ = st.columns([0.16, 0.22, 0.62])
+    with nav_col:
+        st.link_button("온라인몰 선택", "/", use_container_width=True)
+    with source_col:
+        st.link_button("원본 월간 순위표 열기", config["search_url"], use_container_width=True)
+
+    st.selectbox("판매 월", month_labels, index=month_labels.index(selected_month), key="donki_month")
+    st.caption("온라인몰 실시간 순위가 아니라 돈키호테 오프라인 월간 매출 순위입니다. 새 월 자료가 제공될 때 한 번 업데이트합니다.")
+    st.markdown('<div class="section-title">월간 TOP 6</div>', unsafe_allow_html=True)
+
+    top_rows = df_current.head(6).to_dict("records")
+    cards = st.columns(3, gap="medium")
+    for index, row in enumerate(top_rows):
+        if index == 3:
+            cards = st.columns(3, gap="medium")
+        href = row["href"]
+        status = status_map.get(href, "유지")
+        tag = manual_tags.get(href, {})
+        with cards[index % 3]:
+            with st.container(border=True, key=f"donki-card-{selected_month}-{row['rank']}"):
+                render_status(status)
+                st.markdown(f'<div class="rank-badge">#{int(row["rank"])}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="product-name" style="min-height:4.2rem;">{html.escape(str(row["product"]))}</div>', unsafe_allow_html=True)
+                a, b = st.columns(2)
+                with a:
+                    spec_cell("DIA", row.get("dia", "-"))
+                with b:
+                    spec_cell("G.DIA", row.get("gdia", "-"))
+
+                color_index = COLOR_OPTIONS.index(tag.get("color")) if tag.get("color") in COLOR_OPTIONS else None
+                mood_index = MOOD_OPTIONS.index(tag.get("mood")) if tag.get("mood") in MOOD_OPTIONS else None
+                edge_index = EDGE_OPTIONS.index(tag.get("edge")) if tag.get("edge") in EDGE_OPTIONS else None
+                selected_color = st.selectbox("렌즈 컬러", COLOR_OPTIONS, index=color_index, placeholder="선택 안 함", key=f"donki-color-{href}") or ""
+                selected_mood = st.selectbox("무드", MOOD_OPTIONS, index=mood_index, placeholder="선택 안 함", key=f"donki-mood-{href}") or ""
+                selected_edge = st.selectbox("엣지", EDGE_OPTIONS, index=edge_index, placeholder="선택 안 함", key=f"donki-edge-{href}") or ""
+                manual_tags[href] = {
+                    "color": selected_color,
+                    "color_other": tag.get("color_other", ""),
+                    "mood": selected_mood,
+                    "mood_other": tag.get("mood_other", ""),
+                    "edge": selected_edge,
+                    "edge_other": tag.get("edge_other", ""),
+                    "style": "",
+                    "style_other": "",
+                }
+
+    save_col, _ = st.columns([0.28, 0.72])
+    with save_col:
+        if st.button("월간 컬러/무드/엣지 저장", use_container_width=True):
+            durable, message = save_manual_tags(manual_tags, config)
+            if durable:
+                st.success("월간 입력값이 GitHub에 영구 저장되었습니다.")
+            else:
+                st.warning(message)
+
+    st.markdown('<div class="section-title">전체 TOP 28 및 전월 대비</div>', unsafe_allow_html=True)
+    previous_rank = dict(zip(df_previous.get("href", []), df_previous.get("rank", []))) if not df_previous.empty else {}
+    table = df_current[["rank", "product", "dia", "gdia", "href"]].copy()
+    table["전월 대비"] = table.apply(
+        lambda row: (
+            "신규"
+            if row["href"] not in previous_rank
+            else "유지"
+            if int(previous_rank[row["href"]]) == int(row["rank"])
+            else f"{int(previous_rank[row['href']])}위 → {int(row['rank'])}위"
+        ),
+        axis=1,
+    )
+    table = table.rename(columns={"rank": "순위", "product": "제품", "dia": "DIA", "gdia": "G.DIA"})
+    st.dataframe(table[["순위", "제품", "DIA", "G.DIA", "전월 대비"]], use_container_width=True, hide_index=True)
+
+    top_tags = [manual_tags.get(row["href"], {}) for row in top_rows]
+    st.markdown('<div class="section-title">월간 디자인 트렌드</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="trend-box"><div class="trend-text">{format_trend_html(generate_trend_text(top_tags, config, selected_month))}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_card(row, config, manual_tags, status_map):
     product = row["product"]
     rank = int(row["rank"])
@@ -2026,6 +2161,10 @@ def render_card(row, config, manual_tags, status_map):
 
 def render_country_dashboard(country_key):
     config = COUNTRIES[country_key]
+
+    if country_key == "donki_offline":
+        render_donki_offline_dashboard(config)
+        return
 
     if country_key == "queen_eyes":
         st.markdown(
