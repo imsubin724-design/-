@@ -1,6 +1,8 @@
+import base64
 import csv
 import calendar
 import html
+import io
 import os
 import re
 import shutil
@@ -36,6 +38,8 @@ COLOR_OPTIONS = [
 MOOD_OPTIONS = ["네추럴/소프트", "글로우/하이라이트", "화려함/컬러풀", "딥/클래식", "기타"]
 EDGE_OPTIONS = ["볼드링", "블러 엣지", "슬림링", "중간 엣지", "노 엣지", "라인 엣지", "기타"]
 TREND_HISTORY_FILE = "trend_history.csv"
+GITHUB_REPOSITORY = "imsubin724-design/-"
+GITHUB_BRANCH = "main"
 TREND_HISTORY_FIELDS = [
     "date",
     "country",
@@ -832,38 +836,72 @@ def trend_product_name(product, max_len=30):
     return short_name(product, 18)
 
 
-def load_manual_tags(config):
+def get_secret(name, default=""):
+    value = os.environ.get(name, "")
+    if value:
+        return value
+    try:
+        return st.secrets.get(name, default)
+    except Exception:
+        return default
+
+
+def read_manual_tags(rows, config):
     tags = {}
-    tag_file = config["tag_file"]
-    if not os.path.exists(tag_file):
-        return tags
+    for row in rows:
+        href = normalize_href(row.get("href", ""), config)
+        mood = row.get("mood", "")
+        edge = row.get("edge", "")
+        mood_other = row.get("mood_other", "")
+        edge_other = row.get("edge_other", "")
 
-    with open(tag_file, newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            href = normalize_href(row.get("href", ""), config)
-            mood = row.get("mood", "")
-            edge = row.get("edge", "")
-            mood_other = row.get("mood_other", "")
-            edge_other = row.get("edge_other", "")
+        if not mood and not edge:
+            mood, edge = migrate_legacy_style(row.get("style", ""))
+        else:
+            mood = normalize_mood_label(mood)
+            edge = normalize_edge_label(edge)
 
-            if not mood and not edge:
-                mood, edge = migrate_legacy_style(row.get("style", ""))
-            else:
-                mood = normalize_mood_label(mood)
-                edge = normalize_edge_label(edge)
-
-            tags[href] = {
-                "color": row.get("color", ""),
-                "color_other": row.get("color_other", ""),
-                "mood": mood,
-                "mood_other": mood_other,
-                "edge": edge,
-                "edge_other": edge_other,
-                "style": row.get("style", ""),
-                "style_other": row.get("style_other", ""),
-            }
+        tags[href] = {
+            "color": row.get("color", ""),
+            "color_other": row.get("color_other", ""),
+            "mood": mood,
+            "mood_other": mood_other,
+            "edge": edge,
+            "edge_other": edge_other,
+            "style": row.get("style", ""),
+            "style_other": row.get("style_other", ""),
+        }
     return tags
+
+
+def github_headers():
+    token = get_secret("GITHUB_TAGS_TOKEN")
+    if not token:
+        return None
+    return {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+
+def load_manual_tags(config):
+    tag_file = config["tag_file"]
+    headers = github_headers()
+    if headers:
+        try:
+            url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/contents/{tag_file}"
+            response = requests.get(url, headers=headers, params={"ref": GITHUB_BRANCH}, timeout=15)
+            response.raise_for_status()
+            content = base64.b64decode(response.json()["content"]).decode("utf-8-sig")
+            return read_manual_tags(csv.DictReader(io.StringIO(content)), config)
+        except Exception:
+            pass
+
+    if not os.path.exists(tag_file):
+        return {}
+    with open(tag_file, newline="", encoding="utf-8-sig") as f:
+        return read_manual_tags(csv.DictReader(f), config)
 
 
 def migrate_legacy_style(style):
@@ -889,36 +927,52 @@ def normalize_edge_label(edge):
     return {"중간엣지": "중간 엣지", "라인엣지": "라인 엣지"}.get(edge, edge)
 
 
-def save_manual_tags(tags, config):
-    with open(config["tag_file"], "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
+def serialize_manual_tags(tags):
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(["href", "color", "color_other", "mood", "mood_other", "edge", "edge_other", "style", "style_other"])
+    for href, info in tags.items():
         writer.writerow(
             [
-                "href",
-                "color",
-                "color_other",
-                "mood",
-                "mood_other",
-                "edge",
-                "edge_other",
-                "style",
-                "style_other",
+                href,
+                info.get("color", ""),
+                info.get("color_other", ""),
+                info.get("mood", ""),
+                info.get("mood_other", ""),
+                info.get("edge", ""),
+                info.get("edge_other", ""),
+                info.get("style", ""),
+                info.get("style_other", ""),
             ]
         )
-        for href, info in tags.items():
-            writer.writerow(
-                [
-                    href,
-                    info.get("color", ""),
-                    info.get("color_other", ""),
-                    info.get("mood", ""),
-                    info.get("mood_other", ""),
-                    info.get("edge", ""),
-                    info.get("edge_other", ""),
-                    info.get("style", ""),
-                    info.get("style_other", ""),
-                ]
-            )
+    return buffer.getvalue()
+
+
+def save_manual_tags(tags, config):
+    tag_file = config["tag_file"]
+    content = serialize_manual_tags(tags)
+    with open(tag_file, "w", newline="", encoding="utf-8-sig") as f:
+        f.write(content)
+
+    headers = github_headers()
+    if not headers:
+        return False, "GITHUB_TAGS_TOKEN이 설정되지 않아 임시 저장만 완료되었습니다."
+
+    try:
+        url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/contents/{tag_file}"
+        current = requests.get(url, headers=headers, params={"ref": GITHUB_BRANCH}, timeout=15)
+        current.raise_for_status()
+        payload = {
+            "message": f"data: save {config['source']} manual tags",
+            "content": base64.b64encode(content.encode("utf-8-sig")).decode("ascii"),
+            "sha": current.json()["sha"],
+            "branch": GITHUB_BRANCH,
+        }
+        saved = requests.put(url, headers=headers, json=payload, timeout=20)
+        saved.raise_for_status()
+        return True, "GitHub에 영구 저장되었습니다."
+    except Exception as exc:
+        return False, f"GitHub 영구 저장에 실패했습니다: {exc}"
 
 
 def load_trend_history():
@@ -2152,9 +2206,12 @@ def render_country_dashboard(country_key):
         st.markdown('<div class="section-title">입력값 저장</div>', unsafe_allow_html=True)
 
         if st.button("컬러/무드/엣지 저장", use_container_width=True):
-            save_manual_tags(manual_tags, config)
+            durable, save_message = save_manual_tags(manual_tags, config)
             saved_count = save_trend_snapshot(config, df_today, manual_tags)
-            st.success(f"입력값이 저장되었습니다. 오늘 트렌드 스냅샷 {saved_count}건을 누적했습니다.")
+            if durable:
+                st.success(f"입력값이 영구 저장되었습니다. 오늘 트렌드 스냅샷 {saved_count}건을 누적했습니다.")
+            else:
+                st.warning(save_message)
             st.rerun()
 
         st.markdown(
