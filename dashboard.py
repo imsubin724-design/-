@@ -2069,7 +2069,7 @@ def render_donki_offline_dashboard(config):
     cards = st.columns(4, gap="small")
     for index, row in enumerate(top_rows):
         if index > 0 and index % 4 == 0:
-            cards = st.columns(3, gap="medium")
+            cards = st.columns(4, gap="small")
         href = row["href"]
         media = DONKI_MEDIA.get(href, {})
         status = status_map.get(href, "유지")
