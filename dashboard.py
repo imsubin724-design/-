@@ -138,6 +138,82 @@ COUNTRIES = {
 }
 
 
+# Donki 월별 CSV에는 같은 제품이 반복되므로, 확인한 온라인 상품 이미지를
+# 제품 식별자별로 한 번만 관리한다. CSV에 이미지가 있으면 CSV 값을 우선한다.
+DONKI_MEDIA = {
+    "donki://chapun-zurumote-beige": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/CPN-1d-10-zmbg/thum_640x640.jpg?v=20250819110035",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/CPN-1d-10-zmbg/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/5805",
+    },
+    "donki://secret-candy-no3-brown": {
+        "image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_26se_n03_02.webp",
+        "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/type/se_secret_cm1d_26se/lp_cp_model.webp",
+        "product_url": "https://www.candymagic.jp/product/so-003/",
+    },
+    "donki://honey-kiss-candy-choco-gray": {
+        "image_url": "https://static.growthpalette.com/img/post/aa6ac558-76a4-49fe-9b68-bde45e454ec0/1573504e7091889af097a8cbf923715e_s.jpg",
+        "eye_image_url": "https://static.growthpalette.com/img/post/27ac33e6-44a7-42b4-9c97-7b517980abd6/a9a3f924f78669127dec4cc009aa75e6_l.jpg",
+        "product_url": "https://hotellovers.jp/item/14cf89e5-662d-436c-860f-1420125350b6?color=chcdg",
+    },
+    "donki://olens-glowy-tear-brown": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/OLNS-1d-10-gtbr/thum_640x640.jpg?v=20260226114931",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/OLNS-1d-10-gtbr/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/5958",
+    },
+    "donki://flanmy-kinako-roll": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-kir/thum_640x640.jpg?v=20260410110014",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-kir/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/3735",
+    },
+    "donki://secret-candy-vanilla-brown": {
+        "image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-025/t_sc1d_26se_vb_01.webp",
+        "eye_image_url": "https://www.candymagic.jp/images/pc/thm/secretcandymagic_1day_2g/so-025/t_sc1d_26se_vb_02.webp",
+        "product_url": "https://www.candymagic.jp/product/so-025/",
+    },
+    "donki://flanmy-sugar-churros": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-sgc/thum_640x640.jpg",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-sgc/thum_640x360_eye.jpg?v=20260401153748",
+        "product_url": "https://morecon.jp/i/6311",
+    },
+    "donki://flanmy-bitter-churros": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-btc/thum_640x640.jpg",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-btc/thum_640x360_eye.jpg?v=20260401153720",
+        "product_url": "https://morecon.jp/i/6310",
+    },
+    "donki://flanmy-milk-pudding": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-mkp/thum_640x640.jpg?v=20260410110014",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-mkp/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/5979",
+    },
+    "donki://flanmy-earl-gray-parfait": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-egp/thum_640x640.jpg?v=20260410110014",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-egp/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/5980",
+    },
+    "donki://flanmy-butter-fudge": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-btf/thum_640x640.jpg?v=20260410110014",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/FLM-10-btf/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/5494",
+    },
+    "donki://bambi-snow-purple": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/AC-new1d-10-snp/thum_640x640.jpg?v=20260313094620",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/AC-new1d-10-snp/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/6268",
+    },
+    "donki://bambi-swan-gray": {
+        "image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/AC-new1d-10-new-sgr/thum_640x640.jpg?v=20260213111531",
+        "eye_image_url": "https://d28qg0el9tv5wv.cloudfront.net/data/img/items/AC-new1d-10-new-sgr/thum_640x360_eye.jpg",
+        "product_url": "https://morecon.jp/i/5251",
+    },
+    "donki://larme-moon-filter": {
+        "image_url": "https://larme-melty.jp/month/images/main/mf-main.jpg",
+        "eye_image_url": "https://larme-melty.jp/month/images/lens-wearing-back.png",
+        "product_url": "https://larme-melty.jp/month/moon_filter/",
+    },
+}
+
+
 st.markdown(
     """
 <style>
@@ -1983,14 +2059,15 @@ def render_donki_offline_dashboard(config):
         if index == 3:
             cards = st.columns(3, gap="medium")
         href = row["href"]
+        media = DONKI_MEDIA.get(href, {})
         status = status_map.get(href, "유지")
         tag = manual_tags.get(href, {})
         with cards[index % 3]:
             with st.container(border=True, key=f"donki-card-{selected_month}-{row['rank']}"):
                 render_status(status)
                 st.markdown(f'<div class="rank-badge">#{int(row["rank"])}</div>', unsafe_allow_html=True)
-                image = clean_url(row.get("image_url", ""), config)
-                eye_image = clean_url(row.get("eye_image_url", ""), config)
+                image = clean_url(row.get("image_url", ""), config) or media.get("image_url", "")
+                eye_image = clean_url(row.get("eye_image_url", ""), config) or media.get("eye_image_url", "")
                 image_col, spec_col = st.columns([1.05, 0.95], gap="small")
                 with image_col:
                     main_html = (
@@ -2030,7 +2107,7 @@ def render_donki_offline_dashboard(config):
                     "style": "",
                     "style_other": "",
                 }
-                product_url = str(row.get("product_url", "")).strip()
+                product_url = str(row.get("product_url", "")).strip() or media.get("product_url", "")
                 if product_url.startswith("http"):
                     st.link_button("온라인 상품 페이지", product_url, use_container_width=True)
 
