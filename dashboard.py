@@ -147,13 +147,13 @@ DONKI_MEDIA = {
         "product_url": "https://morecon.jp/i/5805",
     },
     "donki://secret-candy-no3-brown": {
-        "image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_26se_n03_02.webp",
-        "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/type/se_secret_cm1d_26se/lp_cp_model.webp",
+        "image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_26se_n03_01.webp",
+        "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_25_n03_05.webp",
         "product_url": "https://www.candymagic.jp/product/so-003/",
     },
     "donki://honey-kiss-candy-choco-gray": {
-        "image_url": "https://static.growthpalette.com/img/post/aa6ac558-76a4-49fe-9b68-bde45e454ec0/1573504e7091889af097a8cbf923715e_s.jpg",
-        "eye_image_url": "https://static.growthpalette.com/img/post/27ac33e6-44a7-42b4-9c97-7b517980abd6/a9a3f924f78669127dec4cc009aa75e6_l.jpg",
+        "image_url": "https://static.growthpalette.com/img/post/aa6ac558-76a4-49fe-9b68-bde45e454ec0/1573504e7091889af097a8cbf923715e.jpg",
+        "eye_image_url": "https://static.growthpalette.com/hotellovers-app/images/7174dee0-373b-4920-9795-22341ab81fc5.jpg",
         "product_url": "https://hotellovers.jp/item/14cf89e5-662d-436c-860f-1420125350b6?color=chcdg",
     },
     "donki://olens-glowy-tear-brown": {
@@ -168,7 +168,7 @@ DONKI_MEDIA = {
     },
     "donki://secret-candy-vanilla-brown": {
         "image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-025/t_sc1d_26se_vb_01.webp",
-        "eye_image_url": "https://www.candymagic.jp/images/pc/thm/secretcandymagic_1day_2g/so-025/t_sc1d_26se_vb_02.webp",
+        "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-025/t_sc1d_25_vb_05.webp",
         "product_url": "https://www.candymagic.jp/product/so-025/",
     },
     "donki://flanmy-sugar-churros": {
@@ -2066,8 +2066,8 @@ def render_donki_offline_dashboard(config):
             with st.container(border=True, key=f"donki-card-{selected_month}-{row['rank']}"):
                 render_status(status)
                 st.markdown(f'<div class="rank-badge">#{int(row["rank"])}</div>', unsafe_allow_html=True)
-                image = clean_url(row.get("image_url", ""), config) or media.get("image_url", "")
-                eye_image = clean_url(row.get("eye_image_url", ""), config) or media.get("eye_image_url", "")
+                image = media.get("image_url", "") or clean_url(row.get("image_url", ""), config)
+                eye_image = media.get("eye_image_url", "") or clean_url(row.get("eye_image_url", ""), config)
                 image_col, spec_col = st.columns([1.05, 0.95], gap="small")
                 with image_col:
                     main_html = (
@@ -2107,7 +2107,7 @@ def render_donki_offline_dashboard(config):
                     "style": "",
                     "style_other": "",
                 }
-                product_url = str(row.get("product_url", "")).strip() or media.get("product_url", "")
+                product_url = media.get("product_url", "") or str(row.get("product_url", "")).strip()
                 if product_url.startswith("http"):
                     st.link_button("온라인 상품 페이지", product_url, use_container_width=True)
 
