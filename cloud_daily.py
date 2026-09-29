@@ -66,7 +66,24 @@ SOURCES = (
         "host": "https://hotellovers.jp",
         "tags": "hotel_lovers_manual_tags.csv",
     },
+    {
+        "name": "Donki",
+        "today": "donki_2026-08.csv",
+        "yesterday": "donki_2026-07.csv",
+        "archive": "donki_*.csv",
+        "archive_regex": r"donki_\d{4}-\d{2}\.csv",
+        "script": "",
+        "host": "",
+        "tags": "donki_offline_manual_tags.csv",
+        "period": "월간",
+    },
 )
+DONKI_EMAIL_MEDIA = {
+    "donki://secret-candy-no3-brown": {"image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_26se_n03_01.webp", "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_25_n03_05.webp", "product_url": "https://www.candymagic.jp/product/so-003/"},
+    "donki://honey-kiss-candy-choco-gray": {"image_url": "https://static.growthpalette.com/img/post/aa6ac558-76a4-49fe-9b68-bde45e454ec0/1573504e7091889af097a8cbf923715e.jpg", "eye_image_url": "https://static.growthpalette.com/hotellovers-app/images/7174dee0-373b-4920-9795-22341ab81fc5.jpg", "product_url": "https://hotellovers.jp/item/14cf89e5-662d-436c-860f-1420125350b6?color=chcdg"},
+    "donki://secret-candy-vanilla-brown": {"image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-025/t_sc1d_26se_vb_01.webp", "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-025/t_sc1d_25_vb_05.webp", "product_url": "https://www.candymagic.jp/product/so-025/"},
+    "donki://larme-moon-filter": {"image_url": "", "eye_image_url": "", "product_url": ""},
+}
 HISTORY_FIELDS = ["date", "country", "source", "rank", "product", "href", "color", "color_other", "mood", "mood_other", "edge", "edge_other"]
 
 
@@ -78,6 +95,8 @@ def sync_trend_history(backfill_saved_tags: bool = False) -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     added = 0
     for source in SOURCES:
+        if source.get("period") == "월간":
+            continue
         tags_path = ROOT / source["tags"]
         tags = {full_url(r.get("href", ""), source["host"]): r for r in read_rows(tags_path)} if tags_path.exists() else {}
         for path in sorted(ROOT.glob(source["archive"])):
@@ -165,6 +184,12 @@ def analyze_source(source: dict[str, str]) -> tuple[list[dict[str, str]], dict[s
         else:
             status, move = "유지", f"{rank}위 유지"
         item.update(href=href, status=status, move=move)
+        if source["name"] == "Donki":
+            verified = DONKI_EMAIL_MEDIA.get(href, {})
+            if href in DONKI_EMAIL_MEDIA:
+                for field in ("image_url", "eye_image_url", "product_url"):
+                    item[field] = verified.get(field, "")
+            item["href"] = verified.get("product_url") or href
         tag = tags.get(href, {})
         for field in counts:
             item[field] = display_tag(tag, field)
@@ -210,6 +235,8 @@ def collect() -> None:
     environment = os.environ.copy()
     environment["LENS_HEADLESS"] = "1"
     for source in SOURCES:
+        if not source["script"]:
+            continue
         restore_yesterday(source)
         subprocess.run(
             [sys.executable, source["script"]], cwd=ROOT, env=environment, check=True
@@ -228,6 +255,8 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
         main_color = counts["color"].most_common(1)[0][0] if counts["color"] else "입력값 없음"
         main_mood = counts["mood"].most_common(1)[0][0] if counts["mood"] else "입력값 없음"
         main_edge = counts["edge"].most_common(1)[0][0] if counts["edge"] else "입력값 없음"
+        ranking_label = f"TOP {len(analyzed)}"
+        period_label = source.get("period", "당일")
         trend_lines = [
             f'TOP 6에서는 <b>{html.escape(main_color)}</b> 컬러가 가장 눈에 띕니다.',
             f'디자인은 <b>{html.escape(main_mood)}</b> 무드와 <b>{html.escape(main_edge)}</b> 엣지가 중심 흐름입니다.',
@@ -293,7 +322,7 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
             f'<tr>{"".join(cards[index:index + 3])}</tr>' for index in range(0, len(cards), 3)
         )
         sections.append(
-            f'<h2 style="color:#d8688c;margin-top:32px">{source["name"]} 1day TOP 6</h2>'
+            f'<h2 style="color:#d8688c;margin-top:32px">{source["name"]} {period_label} 1day {ranking_label}</h2>'
             f'<table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:16px"><tr>{summary_cells}</tr></table>'
             '<h3 style="color:#263044">디자인 트렌드</h3>'
             f'<div style="padding:14px;background:#fff8fa;border:1px solid #f1d7df;border-radius:10px">'
@@ -302,7 +331,7 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
             f'<b>엣지</b> {chips(counts["edge"])}</div>'
             '<h3 style="color:#263044">순위 변화</h3>'
             f'<table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:18px">{changes}</table>'
-            '<h3 style="color:#263044">현재 TOP 6 제품</h3>'
+            f'<h3 style="color:#263044">현재 {ranking_label} 제품</h3>'
             f'<table role="presentation" style="width:100%;border-collapse:collapse">{rows_html}</table>'
         )
     today = datetime.now().strftime("%Y-%m-%d")
@@ -310,7 +339,7 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
         '<!doctype html><html><body style="margin:0;background:#fff7fa;font-family:Arial,sans-serif;color:#263044">'
         '<div style="max-width:1100px;margin:auto;padding:28px;background:#ffffff">'
         f'<h1 style="color:#d8688c">일본 컬러렌즈 일일 트렌드 리포트 · {today}</h1>'
-        '<p>Morecon, Queen Eyes, Hotel Lovers의 당일 1day 컬러렌즈 인기 순위입니다.</p>'
+        '<p>Morecon, Queen Eyes, Hotel Lovers의 당일 순위와 Donki의 최신 월간 1day 컬러렌즈 판매 순위입니다.</p>'
         f'{"".join(sections)}</div></body></html>'
     )
     return document, image_parts
@@ -336,7 +365,7 @@ def send_email() -> None:
     message = EmailMessage()
     message["From"] = user
     message["To"] = ", ".join(recipients)
-    message["Subject"] = f"일본 컬러렌즈 TOP 6 일일 리포트 - {datetime.now():%Y-%m-%d}"
+    message["Subject"] = f"일본 컬러렌즈 온라인·Donki 통합 리포트 - {datetime.now():%Y-%m-%d}"
     message.set_content("HTML을 지원하는 메일에서 리포트를 확인해 주세요.")
     message.add_alternative(report, subtype="html")
     html_part = message.get_payload()[-1]
