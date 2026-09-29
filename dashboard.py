@@ -1284,6 +1284,30 @@ def build_rank_change_rows(df_today, df_yesterday, status_map, target_status):
 
         rows.append(
             {
+                def build_rank_change_rows(df_today, df_yesterday, status_map, target_status):
+    if df_today.empty:
+        return []
+
+    yesterday_rank_map = {}
+    if not df_yesterday.empty:
+        yesterday_rank_map = dict(zip(df_yesterday["href"], df_yesterday["rank"]))
+
+    rows = []
+    for _, row in df_today.iterrows():
+        href = row["href"]
+        status = status_map.get(href, "유지")
+        if status != target_status:
+            continue
+
+        rank = int(row["rank"])
+        old_rank = yesterday_rank_map.get(href)
+        if old_rank:
+            movement = f"{int(old_rank)}위 → {rank}위"
+        else:
+            movement = f"{rank}위 신규 진입"
+
+        rows.append(
+            {
                 "rank": rank,
                 "old_rank": int(old_rank) if old_rank else None,
                 "movement": movement,
@@ -1296,31 +1320,7 @@ def build_rank_change_rows(df_today, df_yesterday, status_map, target_status):
     return rows
 
 
-def render_change_summary(title, rows):
-    if not rows:
-        body = '<div class="summary-text">해당 제품 없음</div>'
-    else:
-        body = ""
-        for row in rows:
-            name = html.escape(short_name(row["product"], 44))
-            href = html.escape(row["href"], quote=True)
-            image_url = html.escape(str(row.get("image_url", "")), quote=True)
-            movement = html.escape(row["movement"])
-            thumb = f'<img class="change-thumb" src="{image_url}" alt="">' if image_url else '<div class="change-thumb"></div>'
-            body += (
-                '<div class="change-item">'
-                f"{thumb}"
-                '<div class="change-info">'
-                f'<a class="change-name" href="{href}" target="_blank">{name}</a>'
-                f'<div class="change-meta">{movement}</div>'
-                "</div>"
-                "</div>"
-            )
 
-    st.markdown(
-        f'<div class="summary-box"><div class="summary-title">{html.escape(title)}</div>{body}</div>',
-        unsafe_allow_html=True,
-    )
 
 
 def render_status(status):
