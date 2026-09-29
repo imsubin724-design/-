@@ -148,7 +148,7 @@ DONKI_MEDIA = {
     },
     "donki://secret-candy-no3-brown": {
         "image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_26se_n03_02.webp",
-        "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/thm/secretcandymagic_1day_2g/so-003/t_sc1d_26se_n03_01.webp",
+        "eye_image_url": "https://fatp275ehc.user-space.cdn.idcfcloud.net/images/pc/type/se_secret_cm1d_26se/lp_cp_model.webp",
         "product_url": "https://www.candymagic.jp/product/so-003/",
     },
     "donki://honey-kiss-candy-choco-gray": {
@@ -1244,87 +1244,6 @@ def build_rank_change_rows(df_today, df_yesterday, status_map, target_status):
 
         rows.append(
             {
-
-        if href not in yesterday_rank_map:
-            status = "신규"
-        else:
-            old_rank = int(yesterday_rank_map[href])
-            if rank < old_rank:
-                status = "상승"
-            elif rank > old_rank:
-                status = "하락"
-            else:
-                status = "유지"
-
-        status_map[href] = status
-    return status_map
-
-
-def build_rank_change_rows(df_today, df_yesterday, status_map, target_status):
-    if df_today.empty:
-        return []
-
-    yesterday_rank_map = {}
-    if not df_yesterday.empty:
-        yesterday_rank_map = dict(zip(df_yesterday["href"], df_yesterday["rank"]))
-
-    rows = []
-    for _, row in df_today.iterrows():
-        href = row["href"]
-        status = status_map.get(href, "유지")
-        if status != target_status:
-            continue
-
-        rank = int(row["rank"])
-        old_rank = yesterday_rank_map.get(href)
-        if old_rank:
-            movement = f"{int(old_rank)}위 → {rank}위"
-        else:
-            movement = f"{rank}위 신규 진입"
-
-        rows.append(
-            {
-                def build_rank_change_rows(df_today, df_yesterday, status_map, target_status):
-    if df_today.empty:
-        return []
-
-    yesterday_rank_map = {}
-    if not df_yesterday.empty:
-        yesterday_rank_map = dict(zip(df_yesterday["href"], df_yesterday["rank"]))
-
-    rows = []
-    for _, row in df_today.iterrows():
-        href = row["href"]
-        status = status_map.get(href, "유지")
-        if status != target_status:
-            continue
-
-        rank = int(row["rank"])
-        old_rank = yesterday_rank_map.get(href)
-        if old_rank:
-            movement = f"{int(old_rank)}위 → {rank}위"
-        else:
-            movement = f"{rank}위 신규 진입"
-
-        rows.append(
-            {
-                "rank": rank,
-                "old_rank": int(old_rank) if old_rank else None,
-                "movement": movement,
-                "product": row.get("product", ""),
-                "href": href,
-                "image_url": row.get("image_url", ""),
-            }
-        )
-
-    return rows
-
-
-
-
-
-def render_status(status):
-ㄴ
                 "rank": rank,
                 "old_rank": int(old_rank) if old_rank else None,
                 "movement": movement,
