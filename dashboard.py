@@ -512,6 +512,18 @@ div[class*="st-key-rank-card-keep"] div[data-testid="stVerticalBlockBorderWrappe
     box-shadow:none !important;
     background:#ffffff !important;
 }
+/* Donki 월간 카드는 많은 순위를 한눈에 볼 수 있도록 별도로 압축한다. */
+div[class*="st-key-donki-card-"] div[data-testid="stVerticalBlockBorderWrapper"] { padding:0.65rem !important; border-radius:10px !important; }
+div[class*="st-key-donki-card-"] div[data-testid="stVerticalBlock"] { gap:0.35rem !important; }
+div[class*="st-key-donki-card-"] .rank-badge { font-size:1.3rem; margin-bottom:0.1rem; }
+div[class*="st-key-donki-card-"] .product-name { font-size:0.86rem; min-height:2.4rem !important; margin:0.2rem 0 0.1rem; }
+div[class*="st-key-donki-card-"] .status-pill { padding:0.14rem 0.45rem; font-size:0.74rem; }
+div[class*="st-key-donki-card-"] .card-status-row { margin-bottom:0.2rem; }
+div[class*="st-key-donki-card-"] [data-testid="stSelectbox"] label p { font-size:0.76rem !important; }
+div[class*="st-key-donki-card-"] [data-baseweb="select"] > div { min-height:2.15rem !important; }
+div[class*="st-key-donki-card-"] [data-testid="stMarkdownContainer"]:has(img[alt="제품 이미지"]) > div { display:grid !important; grid-template-columns:1fr 1fr; gap:8px; align-items:start; }
+div[class*="st-key-donki-card-"] [data-testid="stMarkdownContainer"]:has(img[alt="제품 이미지"]) > div > div { margin-top:0 !important; aspect-ratio:1; }
+div[class*="st-key-donki-card-"] [data-testid="stMarkdownContainer"]:has(img[alt="제품 이미지"]) > div > div:last-child { display:none !important; }
 .metric-card { background:#fff8f4; border:1px solid var(--peach-line); border-radius:8px; padding:16px 18px; margin-bottom:12px; box-shadow:0 8px 18px rgba(176,104,72,0.06); }
 .metric-label { font-size:14px; color:#6b7280; font-weight:600; margin-bottom:6px; }
 .metric-value { font-size:32px; color:#111827; font-weight:800; line-height:1; }
@@ -2054,15 +2066,15 @@ def render_donki_offline_dashboard(config):
     st.markdown(f'<div class="section-title">월간 TOP {display_count}</div>', unsafe_allow_html=True)
 
     top_rows = df_current.head(display_count).to_dict("records")
-    cards = st.columns(3, gap="medium")
+    cards = st.columns(4, gap="small")
     for index, row in enumerate(top_rows):
-        if index == 3:
+        if index > 0 and index % 4 == 0:
             cards = st.columns(3, gap="medium")
         href = row["href"]
         media = DONKI_MEDIA.get(href, {})
         status = status_map.get(href, "유지")
         tag = manual_tags.get(href, {})
-        with cards[index % 3]:
+        with cards[index % 4]:
             with st.container(border=True, key=f"donki-card-{selected_month}-{row['rank']}"):
                 render_status(status)
                 st.markdown(f'<div class="rank-badge">#{int(row["rank"])}</div>', unsafe_allow_html=True)
