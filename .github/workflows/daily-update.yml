@@ -15,7 +15,8 @@ concurrency:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    # ubuntu-latest 배포판 전환으로 Playwright 설치가 깨지는 것을 방지합니다.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -31,21 +32,32 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: Collect rankings, create report, and send email
+      - name: Collect rankings and create report
+        id: collect
+        continue-on-error: true
+        run: python cloud_daily.py
+
+      - name: Commit updated ranking data
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add today.csv yesterday.csv queen_eyes_today.csv queen_eyes_yesterday.csv hotel_lovers_today.csv hotel_lovers_yesterday.csv ranking_*.csv trend_history.csv collection_status.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update daily lens rankings"
+          git push
+
+      - name: Create report and send email
+        if: always()
         env:
           NAVER_WORKS_SMTP_USER: ${{ secrets.NAVER_WORKS_SMTP_USER }}
           NAVER_WORKS_SMTP_APP_PASSWORD: ${{ secrets.NAVER_WORKS_SMTP_APP_PASSWORD }}
           REPORT_RECIPIENTS: ${{ secrets.REPORT_RECIPIENTS }}
-        run: python cloud_daily.py --send-email
+        run: python cloud_daily.py --skip-collection --send-email
 
-      - name: Commit updated ranking data
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add today.csv yesterday.csv queen_eyes_today.csv queen_eyes_yesterday.csv hotel_lovers_today.csv hotel_lovers_yesterday.csv ranking_*.csv trend_history.csv
-          git diff --cached --quiet && exit 0
-          git commit -m "chore: update daily lens rankings"
-          git push
+      - name: Mark job failed when a collector failed
+        if: steps.collect.outcome == 'failure'
+        run: exit 1
 
       - name: Upload report and logs when the job fails
         if: failure()
