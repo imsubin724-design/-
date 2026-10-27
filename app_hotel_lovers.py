@@ -9,8 +9,10 @@ from playwright.sync_api import sync_playwright
 
 TOP_N = 6
 BASE_URL = "https://hotellovers.jp"
-RANKING_URL = f"{BASE_URL}/initranking"
-RANKING_SELECTOR = "#hl_rankpage_one .p-goods-wrapper:not(.is-skeleton)"
+RANKING_URL = BASE_URL
+RANKING_SELECTOR = "#hl_period_zero_rank .toprank_list"
+LATEST_RANKING_URL = f"{BASE_URL}/initranking"
+LATEST_RANKING_SELECTOR = "#hl_rankpage_one .p-goods-wrapper:not(.is-skeleton)"
 
 
 def save_csv(filename, rows):
@@ -34,19 +36,20 @@ def product_key(url):
     return parts.path, parse_qs(parts.query).get("color", [""])[0]
 
 
-def collect_home_eyes(context):
+def collect_latest_product_images(context):
+    """Use the detailed ranking page only as a product-image catalogue."""
     page = context.new_page()
     try:
-        page.goto(BASE_URL, wait_until="domcontentloaded", timeout=45000)
-        page.locator(".toprank_list a img").first.wait_for(state="attached", timeout=30000)
-        cards = page.locator(".toprank_list").evaluate_all("""cards => cards.map(card => ({
-            href: card.querySelector('a')?.href,
-            image: card.querySelector('a img')?.src
+        page.goto(LATEST_RANKING_URL, wait_until="domcontentloaded", timeout=45000)
+        page.locator(LATEST_RANKING_SELECTOR).first.wait_for(state="attached", timeout=30000)
+        cards = page.locator(LATEST_RANKING_SELECTOR).evaluate_all("""cards => cards.map(card => ({
+            href: card.querySelector('a.p-goods')?.href,
+            image: card.querySelector('img.w-100:not(.c-badge-band-image)')?.src
         }))""")
-        return {product_key(card["href"]): card["image"] + "#home-eye"
+        return {product_key(card["href"]): card["image"]
                 for card in cards if card.get("href") and card.get("image")}
     except Exception as error:
-        print(f"홈페이지 착용 이미지 수집 경고: {error}")
+        print(f"상품 이미지 카탈로그 수집 경고: {error}")
         return {}
     finally:
         page.close()
@@ -71,26 +74,29 @@ def get_eye_image_url(context, product_url):
 
 
 def collect_oneday_ranking(page, context, top_n=6):
-    home_eyes = collect_home_eyes(context)
+    product_images = collect_latest_product_images(context)
     page.goto(RANKING_URL, wait_until="domcontentloaded", timeout=45000)
     page.locator(RANKING_SELECTOR).first.wait_for(state="attached", timeout=30000)
     rows = []
     for fallback_rank, card in enumerate(page.locator(RANKING_SELECTOR).all(), start=1):
         if len(rows) >= top_n:
             break
-        link = card.locator("a.p-goods").first
-        rank_text = card.locator(".p-goods-rank").first.inner_text().strip()
-        name = card.locator(".contact__product-name").first.inner_text().strip()
-        color = card.locator(".contact__color").first.inner_text().strip()
-        # Stock-status ribbons are images too; only select the product photo.
-        image = card.locator("img.w-100:not(.c-badge-band-image)").first
+        link = card.locator("a").first
+        rank_image = card.locator(".toprank_no img").first
+        rank_text = rank_image.get_attribute("title") or ""
+        name = card.locator(".toprank_list_title").first.inner_text().strip()
+        color = card.locator(".toprank_list_colorname").first.inner_text().strip()
+        # The homepage artwork contains the model/product panel above and the
+        # wearing-eye panel below. Email rendering crops the #home-eye version.
+        composite = link.locator("img").first
         href = normalize_url(link.get_attribute("href"))
-        image_url = normalize_url(image.get_attribute("src"))
+        composite_url = normalize_url(composite.get_attribute("src"))
+        image_url = product_images.get(product_key(href)) or composite_url
         match = re.search(r"(\d+)", rank_text)
         rank = int(match.group(1)) if match else fallback_rank
         product = f"{name} {color}".strip()
         if href and product:
-            eye_url = home_eyes.get(product_key(href)) or get_eye_image_url(context, href)
+            eye_url = f"{composite_url}#home-eye" if composite_url else get_eye_image_url(context, href)
             rows.append([rank, product, href, image_url, eye_url])
     rows.sort(key=lambda row: row[0])
     if len(rows) < top_n:
