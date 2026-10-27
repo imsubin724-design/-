@@ -6,6 +6,7 @@ import argparse
 import csv
 import html
 import io
+import json
 import os
 import re
 import shutil
@@ -22,6 +23,7 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parent
+COLLECTION_STATUS_PATH = ROOT / "collection_status.json"
 
 
 def prepare_email_image(url: str, data: bytes, mime: str) -> tuple[bytes, str]:
@@ -231,19 +233,58 @@ def restore_yesterday(source: dict[str, str]) -> None:
         shutil.copy2(ROOT / source["today"], ROOT / source["yesterday"])
 
 
-def collect() -> None:
+def collect() -> list[dict[str, str]]:
+    """Collect each shop independently so one failure does not discard the rest."""
     environment = os.environ.copy()
     environment["LENS_HEADLESS"] = "1"
+    results: list[dict[str, str]] = []
     for source in SOURCES:
         if not source["script"]:
             continue
-        restore_yesterday(source)
-        subprocess.run(
-            [sys.executable, source["script"]], cwd=ROOT, env=environment, check=True
-        )
-        rows = read_rows(ROOT / source["today"])
-        if len(rows) != 6:
-            raise RuntimeError(f"{source['name']} 수집 결과가 6개가 아닙니다: {len(rows)}개")
+        try:
+            restore_yesterday(source)
+            subprocess.run(
+                [sys.executable, source["script"]], cwd=ROOT, env=environment, check=True
+            )
+            rows = read_rows(ROOT / source["today"])
+            if len(rows) != 6:
+                raise RuntimeError(
+                    f"{source['name']} 수집 결과가 6개가 아닙니다: {len(rows)}개"
+                )
+            results.append({"source": source["name"], "status": "success", "detail": "6개 수집"})
+            print(f"수집 성공: {source['name']} (6개)")
+        except Exception as error:
+            detail = f"{type(error).__name__}: {error}"
+            results.append({"source": source["name"], "status": "failed", "detail": detail})
+            print(f"수집 실패: {source['name']} ({detail})", file=sys.stderr)
+
+    COLLECTION_STATUS_PATH.write_text(
+        json.dumps(
+            {"updated_at": datetime.now().isoformat(timespec="seconds"), "results": results},
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return results
+
+
+def collection_notice() -> str:
+    if not COLLECTION_STATUS_PATH.exists():
+        return ""
+    try:
+        status = json.loads(COLLECTION_STATUS_PATH.read_text(encoding="utf-8"))
+        failed = [row for row in status.get("results", []) if row.get("status") == "failed"]
+    except (OSError, ValueError, TypeError):
+        return ""
+    if not failed:
+        return ""
+    names = ", ".join(html.escape(row.get("source", "알 수 없는 온라인몰")) for row in failed)
+    return (
+        '<div style="margin:16px 0;padding:14px;background:#fff3cd;border:1px solid #ffe69c;'
+        'border-radius:10px;color:#664d03"><b>수집 주의:</b> '
+        f'{names}의 오늘 수집에 실패해 마지막 정상 저장 데이터를 표시합니다.</div>'
+    )
 
 
 def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, str]]]:
@@ -340,6 +381,7 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
         '<div style="max-width:1100px;margin:auto;padding:28px;background:#ffffff">'
         f'<h1 style="color:#d8688c">일본 컬러렌즈 일일 트렌드 리포트 · {today}</h1>'
         '<p>Morecon, Queen Eyes, Hotel Lovers의 당일 순위와 Donki의 최신 월간 1day 컬러렌즈 판매 순위입니다.</p>'
+        f'{collection_notice()}'
         f'{"".join(sections)}</div></body></html>'
     )
     return document, image_parts
@@ -389,12 +431,16 @@ def main() -> None:
     if args.recover_history_only:
         sync_trend_history(backfill_saved_tags=args.backfill_saved_tags)
         return
+    collection_results: list[dict[str, str]] = []
     if not args.skip_collection:
-        collect()
+        collection_results = collect()
     sync_trend_history()
     write_report()
     if args.send_email:
         send_email()
+    failed = [row for row in collection_results if row["status"] == "failed"]
+    if failed:
+        raise SystemExit(f"일부 수집 실패: {', '.join(row['source'] for row in failed)}")
 
 
 if __name__ == "__main__":
