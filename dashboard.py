@@ -1,4 +1,6 @@
+import base64
 import csv
+
 import calendar
 import html
 import io
@@ -1567,7 +1569,7 @@ def render_country_home():
         ("02", "Queen Eyes", "https://www.queen-eyes.com/", "분석 연결", "Queen Eyes 1day 인기 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=queen_eyes", "대시보드 열기", True),
         ("03", "Hotel Lovers", "https://hotellovers.jp/", "분석 연결", "Hotel Lovers 주간 1day 인기 TOP 6와 디자인 태그, 순위 변화를 확인합니다.", "?country=hotel_lovers", "대시보드 열기", True),
         ("04", "Donki", "https://docs.google.com/presentation/d/1xg_Axh5Qi4UpmOfT9iMEIo-33g1zW_rb/edit", "월간 분석 연결", "돈키호테 오프라인 월간 판매 TOP 28과 전월 대비 순위 변화를 확인합니다.", "?country=donki_offline", "대시보드 열기", True),
-        ("05", "Rakuten Daily", "https://ranking.rakuten.co.jp/daily/408099/", "수집 준비", "라쿠텐 데일리 랭킹을 추가해 대형몰 기준의 변화를 비교할 예정입니다.", "https://ranking.rakuten.co.jp/daily/408099/", "사이트 열기", False),
+        
     ]
     cards = []
     for index, name, url, status, description, href, action, active in sources:
