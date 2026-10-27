@@ -49,6 +49,9 @@ jobs:
 
       - name: Create report and send email
         if: always()
+        # SMTP/login trouble must not prevent the next scheduled collection or
+        # turn an otherwise saved ranking update into a failed data run.
+        continue-on-error: true
         env:
           NAVER_WORKS_SMTP_USER: ${{ secrets.NAVER_WORKS_SMTP_USER }}
           NAVER_WORKS_SMTP_APP_PASSWORD: ${{ secrets.NAVER_WORKS_SMTP_APP_PASSWORD }}
