@@ -1,0 +1,20 @@
+{
+  "updated_at": "2026-10-27T01:23:50",
+  "results": [
+    {
+      "source": "Morecon",
+      "status": "success",
+      "detail": "6개 수집"
+    },
+    {
+      "source": "Queen Eyes",
+      "status": "success",
+      "detail": "6개 수집"
+    },
+    {
+      "source": "Hotel Lovers",
+      "status": "success",
+      "detail": "6개 수집"
+    }
+  ]
+}
