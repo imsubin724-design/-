@@ -1929,7 +1929,9 @@ def render_period_analysis(config, history, selected_date, end_date):
     st.markdown('<div class="section-title">누적 분석</div>', unsafe_allow_html=True)
     st.caption("`컬러/무드/엣지 저장` 버튼으로 저장된 일별 스냅샷 기준으로 업데이트됩니다.")
 
-    period_label = st.segmented_control("분석 기간", ["일일", "주간", "월간", "분기", "년간"], default="일일")
+    # 새 PC나 새 브라우저 세션에서도 누적 데이터가 바로 보이도록
+    # 단일 날짜가 아닌 최근 30일 누적을 기본 화면으로 사용합니다.
+    period_label = st.segmented_control("분석 기간", ["일일", "주간", "월간", "분기", "년간"], default="월간")
 
     if period_label == "일일":
         start_date = pd.Timestamp(selected_date)
