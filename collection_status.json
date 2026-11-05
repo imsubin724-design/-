@@ -1,10 +1,10 @@
 {
-  "updated_at": "2026-11-04T07:27:06",
+  "updated_at": "2026-11-05T07:52:33",
   "results": [
     {
       "source": "Morecon",
-      "status": "failed",
-      "detail": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.12.15/x64/bin/python', 'app.py']' returned non-zero exit status 1."
+      "status": "success",
+      "detail": "6개 수집"
     },
     {
       "source": "Queen Eyes",
