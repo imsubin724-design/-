@@ -1,5 +1,4 @@
-from datetime import datetime
-import csv
+from data_store import save_ranking as save_csv, today_kst
 import os
 import re
 
@@ -12,13 +11,6 @@ RANKING_SELECTOR = (
     ".ranking-dark-box .tab-contents > li:first-child "
     ".item-list > li"
 )
-
-
-def save_csv(filename, rows):
-    with open(filename, "w", newline="", encoding="utf-8-sig") as file:
-        writer = csv.writer(file)
-        writer.writerow(["rank", "product", "href", "image_url", "eye_image_url"])
-        writer.writerows(rows)
 
 
 def normalize_url(url):
@@ -96,7 +88,7 @@ with sync_playwright() as playwright:
     browser.close()
 
 
-today = datetime.now().strftime("%Y-%m-%d")
-save_csv("queen_eyes_today.csv", ranking_rows)
+today = today_kst()
 save_csv(f"ranking_queen_eyes_{today}.csv", ranking_rows)
+save_csv("queen_eyes_today.csv", ranking_rows)
 print("Queen Eyes 1day TOP 6 저장 완료")

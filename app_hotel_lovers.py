@@ -1,5 +1,4 @@
-from datetime import datetime
-import csv
+from data_store import save_ranking as save_csv, today_kst
 import os
 import re
 import shutil
@@ -13,13 +12,6 @@ RANKING_URL = BASE_URL
 RANKING_SELECTOR = "#hl_period_zero_rank .toprank_list"
 LATEST_RANKING_URL = f"{BASE_URL}/initranking"
 LATEST_RANKING_SELECTOR = "#hl_rankpage_one .p-goods-wrapper:not(.is-skeleton)"
-
-
-def save_csv(filename, rows):
-    with open(filename, "w", newline="", encoding="utf-8-sig") as file:
-        writer = csv.writer(file)
-        writer.writerow(["rank", "product", "href", "image_url", "eye_image_url"])
-        writer.writerows(rows)
 
 
 def normalize_url(url):
@@ -122,7 +114,7 @@ with sync_playwright() as playwright:
     context.close()
     browser.close()
 
-today = datetime.now().strftime("%Y-%m-%d")
-save_csv("hotel_lovers_today.csv", ranking_rows)
+today = today_kst()
 save_csv(f"ranking_hotel_lovers_{today}.csv", ranking_rows)
+save_csv("hotel_lovers_today.csv", ranking_rows)
 print("Hotel Lovers 주간 1day TOP 6 저장 완료")

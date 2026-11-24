@@ -10,3 +10,6 @@ lens_smtp_password.txt
 .streamlit/secrets.toml
 debug_*.png
 shopee_thailand_profile/
+*.lock
+*.sync.tmp
+trend_history.before_sync.csv

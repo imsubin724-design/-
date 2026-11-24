@@ -1,17 +1,9 @@
+from data_store import save_ranking as save_csv, today_kst
 from playwright.sync_api import sync_playwright
-import csv
 import os
-from datetime import datetime
 
 TOP_N = 6
 BASE_URL = "https://morecon.jp/"
-
-
-def save_csv(filename, rows):
-    with open(filename, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        writer.writerow(["rank", "product", "href", "image_url", "eye_image_url"])
-        writer.writerows(rows)
 
 
 def normalize_image_url(url):
@@ -72,53 +64,12 @@ def get_eye_image_url(detail_page, image_url=""):
 
 
 def collect_visible_ranking(page, context, top_n=6):
-    links = page.evaluate("""
-    () => {
-        const anchors = Array.from(document.querySelectorAll('a[href^="/i/"]'));
-        return anchors.map(a => {
-            const r = a.getBoundingClientRect();
-            return {
-                href: a.getAttribute('href'),
-                x: r.left,
-                y: r.top,
-                width: r.width,
-                height: r.height
-            };
-        });
-    }
-    """)
-
-    cards = []
-    seen = set()
-
-    for item in links:
-        href = item["href"]
-        x = item["x"]
-        y = item["y"]
-        w = item["width"]
-        h = item["height"]
-
-        if not href or href in seen:
-            continue
-
-        if x < 250:
-            continue
-
-        if y < 40 or y > 1600:
-            continue
-
-        if w < 70 or h < 70:
-            continue
-
-        cards.append({
-            "href": href,
-            "x": x,
-            "y": y
-        })
-        seen.add(href)
-
-    cards.sort(key=lambda item: (round(item["y"] / 20), item["x"]))
-    product_cards = cards[:top_n]
+    ranking = page.locator("#top_ranking_01")
+    ranking.wait_for(state="attached")
+    product_cards = ranking.locator("ul > li > a[href^='/i/']").evaluate_all(
+        "nodes => nodes.map(a => ({href: a.getAttribute('href')}))"
+    )
+    product_cards = product_cards[:top_n]
 
     if len(product_cards) < top_n:
         page.screenshot(path="debug_ranking_area.png", full_page=True)
@@ -169,9 +120,9 @@ with sync_playwright() as p:
     browser.close()
 
 
-today_str = datetime.now().strftime("%Y-%m-%d")
+today_str = today_kst()
 
-save_csv("today.csv", oneday_results)
 save_csv(f"ranking_{today_str}.csv", oneday_results)
+save_csv("today.csv", oneday_results)
 
 print("원데이 랭킹 저장 완료")

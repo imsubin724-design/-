@@ -13,6 +13,7 @@ import shutil
 import smtplib
 import subprocess
 import sys
+import time
 from collections import Counter
 from datetime import datetime
 from email.message import EmailMessage
@@ -20,6 +21,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 from PIL import Image
+from data_store import atomic_text, file_lock, today_kst, validate_ranking
 
 
 ROOT = Path(__file__).resolve().parent
@@ -90,11 +92,17 @@ HISTORY_FIELDS = ["date", "country", "source", "rank", "product", "href", "color
 
 
 def sync_trend_history(backfill_saved_tags: bool = False) -> int:
+    with file_lock(ROOT / ".history.lock"):
+        return _sync_trend_history(backfill_saved_tags)
+
+
+def _sync_trend_history(backfill_saved_tags: bool = False) -> int:
     """Recover archived rankings without inventing historical design tags."""
     history_path = ROOT / "trend_history.csv"
     existing = read_rows(history_path) if history_path.exists() else []
-    records = {(r["date"], r["source"], r["href"]): dict(r) for r in existing}
-    today = datetime.now().strftime("%Y-%m-%d")
+    hosts = {source["name"]: source["host"] for source in SOURCES}
+    records = {(r["date"], r["source"], full_url(r["href"], hosts.get(r["source"], ""))): dict(r) for r in existing}
+    today = today_kst()
     added = 0
     for source in SOURCES:
         if source.get("period") == "월간":
@@ -105,10 +113,21 @@ def sync_trend_history(backfill_saved_tags: bool = False) -> int:
             if not re.fullmatch(source["archive_regex"], path.name):
                 continue
             date = re.search(r"\d{4}-\d{2}-\d{2}", path.stem).group(0)
-            for row in read_rows(path):
+            archive_rows = read_rows(path)
+            try:
+                validate_ranking(archive_rows)
+            except (ValueError, KeyError) as error:
+                print(f"손상된 순위 저장본 제외: {path.name}: {error}", file=sys.stderr)
+                continue
+            archive_keys = {(date, source["name"], full_url(row.get("href", ""), source["host"])) for row in archive_rows}
+            obsolete = [key for key in records if key[:2] == (date, source["name"]) and key not in archive_keys]
+            for key in obsolete:
+                del records[key]
+            for row in archive_rows:
                 href = full_url(row.get("href", ""), source["host"])
                 key = (date, source["name"], href)
                 if key in records:
+                    records[key]["rank"] = row["rank"]
                     continue
                 record = dict.fromkeys(HISTORY_FIELDS, "")
                 record.update(date=date, country="일본", source=source["name"], rank=row["rank"], product=row.get("product", ""), href=href)
@@ -134,10 +153,11 @@ def sync_trend_history(backfill_saved_tags: bool = False) -> int:
                         record[field + "_other"] = tag.get(field + "_other", "")
                         filled += 1
         print(f"기존 저장 태그 복구: {filled}개 항목 (현재 저장값 기준)")
-    with history_path.open("w", encoding="utf-8-sig", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=HISTORY_FIELDS, extrasaction="ignore", lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(sorted(records.values(), key=lambda r: (r["date"], r["source"], int(r["rank"]))))
+    output = io.StringIO(newline="")
+    writer = csv.DictWriter(output, fieldnames=HISTORY_FIELDS, extrasaction="ignore", lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(sorted(records.values(), key=lambda r: (r["date"], r["source"], int(r["rank"]))))
+    atomic_text(history_path, output.getvalue(), encoding="utf-8-sig")
     print(f"누적 기록 복구: {added}건 추가, 총 {len(records)}건")
     return added
 
@@ -221,7 +241,7 @@ def chips(counter: Counter) -> str:
 
 
 def restore_yesterday(source: dict[str, str]) -> None:
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = today_kst()
     candidates = []
     for path in ROOT.glob(source["archive"]):
         if re.fullmatch(source["archive_regex"], path.name) and today not in path.stem:
@@ -233,57 +253,95 @@ def restore_yesterday(source: dict[str, str]) -> None:
         shutil.copy2(ROOT / source["today"], ROOT / source["yesterday"])
 
 
-def collect() -> list[dict[str, str]]:
+def collect(sources=None) -> list[dict[str, str]]:
+    with file_lock(ROOT / ".collection.lock", timeout=1200):
+        return _collect(sources)
+
+
+def _collect(sources=None) -> list[dict[str, str]]:
     """Collect each shop independently so one failure does not discard the rest."""
     environment = os.environ.copy()
     environment["LENS_HEADLESS"] = "1"
     results: list[dict[str, str]] = []
-    for source in SOURCES:
+    for source in SOURCES if sources is None else sources:
         if not source["script"]:
             continue
-        try:
-            restore_yesterday(source)
-            subprocess.run(
-                [sys.executable, source["script"]], cwd=ROOT, env=environment, check=True
-            )
-            rows = read_rows(ROOT / source["today"])
-            if len(rows) != 6:
-                raise RuntimeError(
-                    f"{source['name']} 수집 결과가 6개가 아닙니다: {len(rows)}개"
+        for attempt in range(1, 4):
+            try:
+                restore_yesterday(source)
+                subprocess.run(
+                    [sys.executable, source["script"]], cwd=ROOT, env=environment,
+                    check=True, timeout=300,
                 )
-            results.append({"source": source["name"], "status": "success", "detail": "6개 수집"})
-            print(f"수집 성공: {source['name']} (6개)")
-        except Exception as error:
-            detail = f"{type(error).__name__}: {error}"
-            results.append({"source": source["name"], "status": "failed", "detail": detail})
-            print(f"수집 실패: {source['name']} ({detail})", file=sys.stderr)
+                date = today_kst()
+                archive = ROOT / source["archive"].replace("*", date)
+                rows = read_rows(archive)
+                validate_ranking(rows)
+                # The dated archive is authoritative if today's file write was interrupted.
+                atomic_text(ROOT / source["today"], archive.read_text(encoding="utf-8-sig"), "utf-8-sig")
+                sync_trend_history()
+                if not source_is_current(source):
+                    raise RuntimeError("당일 순위와 누적 기록이 일치하지 않습니다")
+                results.append({"source": source["name"], "status": "success", "date": date,
+                                "detail": f"6개 수집 및 누적 저장 검증 · 시도 {attempt}회"})
+                print(f"수집 및 누적 저장 성공: {source['name']}", flush=True)
+                break
+            except Exception as error:
+                detail = f"{type(error).__name__}: {error}"
+                print(f"수집 실패 {attempt}/3: {source['name']} ({detail})", file=sys.stderr, flush=True)
+                if attempt < 3:
+                    time.sleep(5)
+                else:
+                    results.append({"source": source["name"], "status": "failed",
+                                    "date": today_kst(), "detail": detail})
 
-    COLLECTION_STATUS_PATH.write_text(
+    if sources is not None and COLLECTION_STATUS_PATH.exists():
+        previous = json.loads(COLLECTION_STATUS_PATH.read_text(encoding="utf-8"))
+        names = {result["source"] for result in results}
+        previous_results = [result for result in previous.get("results", []) if result["source"] not in names]
+    else:
+        previous_results = []
+    atomic_text(COLLECTION_STATUS_PATH,
         json.dumps(
-            {"updated_at": datetime.now().isoformat(timespec="seconds"), "results": results},
+            {"updated_at": datetime.now().isoformat(timespec="seconds"), "results": previous_results + results},
             ensure_ascii=False,
             indent=2,
         ),
-        encoding="utf-8",
     )
     return results
 
 
-def collection_notice() -> str:
-    if not COLLECTION_STATUS_PATH.exists():
-        return ""
+def source_is_current(source):
+    date = today_kst()
+    archive = ROOT / source["archive"].replace("*", date)
     try:
-        status = json.loads(COLLECTION_STATUS_PATH.read_text(encoding="utf-8"))
-        failed = [row for row in status.get("results", []) if row.get("status") == "failed"]
-    except (OSError, ValueError, TypeError):
+        archived = read_rows(archive)
+        validate_ranking(archived)
+        current = read_rows(ROOT / source["today"])
+        validate_ranking(current)
+        history = [row for row in read_rows(ROOT / "trend_history.csv")
+                   if row["source"] == source["name"] and row["date"] == date]
+        validate_ranking(history)
+        def identity(rows):
+            return {(int(row["rank"]), full_url(row["href"], source["host"])) for row in rows}
+        return identity(archived) == identity(current) == identity(history)
+    except (OSError, ValueError, KeyError):
+        return False
+
+
+def collection_notice() -> str:
+    failed = [source for source in SOURCES if source["script"] and not source_is_current(source)]
+    persistence_failed = os.environ.get("LENS_PERSISTENCE_STATUS") == "failure"
+    if not failed and not persistence_failed:
         return ""
-    if not failed:
-        return ""
-    names = ", ".join(html.escape(row.get("source", "알 수 없는 온라인몰")) for row in failed)
+    names = ", ".join(html.escape(row["name"]) for row in failed)
+    message = f'{names}의 오늘 순위·누적 저장이 확인되지 않았습니다. 아래는 마지막 저장 순위입니다.' if failed else ""
+    if persistence_failed:
+        message += " GitHub 영구 저장 실패 · 대시보드 동기화 미완료. 실행 기록의 백업 자료를 확인해 주세요."
     return (
         '<div style="margin:16px 0;padding:14px;background:#fff3cd;border:1px solid #ffe69c;'
         'border-radius:10px;color:#664d03"><b>수집 주의:</b> '
-        f'{names}의 오늘 수집에 실패해 마지막 정상 저장 데이터를 표시합니다.</div>'
+        f'{message}</div>'
     )
 
 
@@ -292,12 +350,18 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
     sections = []
     for source in SOURCES:
         analyzed, counts = analyze_source(source)
+        if source["script"]:
+            archives = sorted(path for path in ROOT.glob(source["archive"])
+                              if re.fullmatch(source["archive_regex"], path.name))
+            saved_date = re.search(r"\d{4}-\d{2}-\d{2}", archives[-1].name).group(0) if archives else "날짜 확인 불가"
+            freshness = f"{saved_date} 저장 · 오늘 수집 및 누적 저장 확인" if source_is_current(source) else f"{saved_date} 마지막 저장 · 오늘 기록 누락"
+        else:
+            freshness = f"{Path(source['today']).stem.removeprefix('donki_')} 월간 자료"
         status_counts = Counter(row["status"] for row in analyzed)
         main_color = counts["color"].most_common(1)[0][0] if counts["color"] else "입력값 없음"
         main_mood = counts["mood"].most_common(1)[0][0] if counts["mood"] else "입력값 없음"
         main_edge = counts["edge"].most_common(1)[0][0] if counts["edge"] else "입력값 없음"
         ranking_label = f"TOP {len(analyzed)}"
-        period_label = source.get("period", "당일")
         trend_lines = [
             f'TOP 6에서는 <b>{html.escape(main_color)}</b> 컬러가 가장 눈에 띕니다.',
             f'디자인은 <b>{html.escape(main_mood)}</b> 무드와 <b>{html.escape(main_edge)}</b> 엣지가 중심 흐름입니다.',
@@ -363,7 +427,8 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
             f'<tr>{"".join(cards[index:index + 3])}</tr>' for index in range(0, len(cards), 3)
         )
         sections.append(
-            f'<h2 style="color:#d8688c;margin-top:32px">{source["name"]} {period_label} 1day {ranking_label}</h2>'
+            f'<h2 style="color:#d8688c;margin-top:32px">{source["name"]} 1day {ranking_label}</h2>'
+            f'<p>{html.escape(freshness)}</p>'
             f'<table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:16px"><tr>{summary_cells}</tr></table>'
             '<h3 style="color:#263044">디자인 트렌드</h3>'
             f'<div style="padding:14px;background:#fff8fa;border:1px solid #f1d7df;border-radius:10px">'
@@ -375,7 +440,7 @@ def build_report(cid_images: bool = False) -> tuple[str, list[tuple[str, bytes, 
             f'<h3 style="color:#263044">현재 {ranking_label} 제품</h3>'
             f'<table role="presentation" style="width:100%;border-collapse:collapse">{rows_html}</table>'
         )
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = today_kst()
     document = (
         '<!doctype html><html><body style="margin:0;background:#fff7fa;font-family:Arial,sans-serif;color:#263044">'
         '<div style="max-width:1100px;margin:auto;padding:28px;background:#ffffff">'
@@ -407,7 +472,11 @@ def send_email() -> None:
     message = EmailMessage()
     message["From"] = user
     message["To"] = ", ".join(recipients)
-    message["Subject"] = f"일본 컬러렌즈 온라인·Donki 통합 리포트 - {datetime.now():%Y-%m-%d}"
+    missing = [source["name"] for source in SOURCES if source["script"] and not source_is_current(source)]
+    prefix = f"[수집 누락: {', '.join(missing)}] " if missing else ""
+    if os.environ.get("LENS_PERSISTENCE_STATUS") == "failure":
+        prefix = "[GitHub 저장 실패] " + prefix
+    message["Subject"] = f"{prefix}일본 컬러렌즈 온라인·Donki 통합 리포트 - {today_kst()}"
     message.set_content("HTML을 지원하는 메일에서 리포트를 확인해 주세요.")
     message.add_alternative(report, subtype="html")
     html_part = message.get_payload()[-1]
@@ -427,15 +496,19 @@ def main() -> None:
     parser.add_argument("--send-email", action="store_true")
     parser.add_argument("--recover-history-only", action="store_true")
     parser.add_argument("--backfill-saved-tags", action="store_true")
+    parser.add_argument("--source", choices=[source["name"] for source in SOURCES if source["script"]])
+    parser.add_argument("--collection-only", action="store_true")
     args = parser.parse_args()
     if args.recover_history_only:
         sync_trend_history(backfill_saved_tags=args.backfill_saved_tags)
         return
     collection_results: list[dict[str, str]] = []
     if not args.skip_collection:
-        collection_results = collect()
+        selected = [source for source in SOURCES if source["name"] == args.source] if args.source else None
+        collection_results = collect(selected)
     sync_trend_history()
-    write_report()
+    if not args.collection_only:
+        write_report()
     if args.send_email:
         send_email()
     failed = [row for row in collection_results if row["status"] == "failed"]

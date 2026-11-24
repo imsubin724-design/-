@@ -4,6 +4,7 @@ on:
   schedule:
     # 01:07 UTC = 10:07 Asia/Seoul (정각 실행 혼잡 회피)
     - cron: "7 1 * * *"
+    - cron: "7 3,6,9 * * *"
   workflow_dispatch:
 
 permissions:
@@ -17,7 +18,7 @@ jobs:
   update:
     # ubuntu-latest 배포판 전환으로 Playwright 설치가 깨지는 것을 방지합니다.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +39,7 @@ jobs:
         run: python cloud_daily.py
 
       - name: Commit updated ranking data
+        id: save
         if: always()
         run: |
           git config user.name "github-actions[bot]"
@@ -45,14 +47,16 @@ jobs:
           git add today.csv yesterday.csv queen_eyes_today.csv queen_eyes_yesterday.csv hotel_lovers_today.csv hotel_lovers_yesterday.csv ranking_*.csv trend_history.csv collection_status.json
           git diff --cached --quiet && exit 0
           git commit -m "chore: update daily lens rankings"
+          git pull --rebase origin main
           git push
 
       - name: Create report and send email
-        if: always()
+        if: always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '7 1 * * *')
         # SMTP/login trouble must not prevent the next scheduled collection or
         # turn an otherwise saved ranking update into a failed data run.
         continue-on-error: true
         env:
+          LENS_PERSISTENCE_STATUS: ${{ steps.save.outcome }}
           NAVER_WORKS_SMTP_USER: ${{ secrets.NAVER_WORKS_SMTP_USER }}
           NAVER_WORKS_SMTP_APP_PASSWORD: ${{ secrets.NAVER_WORKS_SMTP_APP_PASSWORD }}
           REPORT_RECIPIENTS: ${{ secrets.REPORT_RECIPIENTS }}
@@ -70,5 +74,8 @@ jobs:
           path: |
             daily_report.html
             debug_*.png
+            collection_status.json
+            ranking_*.csv
+            trend_history.csv
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 30
