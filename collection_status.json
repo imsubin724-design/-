@@ -1,20 +1,23 @@
 {
-  "updated_at": "2026-11-23T08:54:45",
+  "updated_at": "2026-11-24T10:50:44",
   "results": [
     {
       "source": "Morecon",
-      "status": "failed",
-      "detail": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.12.16/x64/bin/python', 'app.py']' returned non-zero exit status 1."
+      "status": "success",
+      "date": "2026-11-24",
+      "detail": "6개 수집 및 누적 저장 검증 · 시도 1회"
     },
     {
       "source": "Queen Eyes",
       "status": "success",
-      "detail": "6개 수집"
+      "date": "2026-11-24",
+      "detail": "6개 수집 및 누적 저장 검증 · 시도 1회"
     },
     {
       "source": "Hotel Lovers",
       "status": "success",
-      "detail": "6개 수집"
+      "date": "2026-11-24",
+      "detail": "6개 수집 및 누적 저장 검증 · 시도 1회"
     }
   ]
 }
