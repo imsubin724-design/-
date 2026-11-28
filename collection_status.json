@@ -1,22 +1,22 @@
 {
-  "updated_at": "2026-11-27T12:04:08",
+  "updated_at": "2026-11-28T08:51:56",
   "results": [
     {
       "source": "Morecon",
       "status": "success",
-      "date": "2026-11-27",
+      "date": "2026-11-28",
       "detail": "6개 수집 및 누적 저장 검증 · 시도 1회"
     },
     {
       "source": "Queen Eyes",
       "status": "success",
-      "date": "2026-11-27",
+      "date": "2026-11-28",
       "detail": "6개 수집 및 누적 저장 검증 · 시도 1회"
     },
     {
       "source": "Hotel Lovers",
       "status": "success",
-      "date": "2026-11-27",
+      "date": "2026-11-28",
       "detail": "6개 수집 및 누적 저장 검증 · 시도 1회"
     }
   ]
